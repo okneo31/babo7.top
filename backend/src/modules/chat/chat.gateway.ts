@@ -31,7 +31,7 @@ import { Room, RoomDocument } from '../../database/schemas/room.schema';
 import { Message, MessageDocument } from '../../database/schemas/message.schema';
 
 const ADMIN_NICK = '관리자';
-const PRESENCE_KEY = 'presence';
+const PRESENCE_KEY = 'presence:online'; // admin PRESENCE_SET과 동일
 const PRESENCE_TTL_SEC = 120; // presence set 만료(좀비 정리)
 
 type AppServer = Server<ClientToServerEvents, ServerToClientEvents>;

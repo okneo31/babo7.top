@@ -21,9 +21,11 @@ export function connectSocket(token: string): TypedSocket {
     socket = null;
   }
 
+  // PM2 cluster(다중 워커)에서는 polling이 sticky session을 요구하므로 websocket 우선.
+  // Redis 어댑터가 워커 간 브로드캐스트를 처리하고, websocket은 단일 연결이라 워커에 고정된다.
   socket = io({
     auth: { token },
-    transports: ['websocket', 'polling'],
+    transports: ['websocket'],
     autoConnect: true,
   }) as TypedSocket;
 

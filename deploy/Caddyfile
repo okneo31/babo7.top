@@ -1,0 +1,28 @@
+# BaboTalk v2 — Caddy 리버스 프록시 + 정적 서빙
+# 앞단 80/443(자동 TLS) → 정적 web/dist + 백엔드(PM2, host:3000) 프록시.
+#
+# 백엔드 업스트림(BACKEND_UPSTREAM):
+#  - Caddy가 컨테이너면 host PM2 접근 위해 host.docker.internal:3000
+#    (docker run/compose에 extra_hosts: "host.docker.internal:host-gateway" 필요)
+#  - Caddy가 네이티브면 127.0.0.1:3000
+
+babo7.top {
+	encode zstd gzip
+
+	# API / 소켓 / 파일(토큰 게이트)은 백엔드로 프록시
+	@api path /api/* /socket.io/* /files/*
+	reverse_proxy @api host.docker.internal:3000
+
+	# 레거시 업로드 파일(구 메시지 호환) — 정적 서빙
+	handle_path /uploads/* {
+		root * /srv/uploads
+		file_server
+	}
+
+	# 그 외 전부 SPA(web/dist). 클라이언트 라우팅 위해 index.html 폴백.
+	handle {
+		root * /srv/web
+		try_files {path} /index.html
+		file_server
+	}
+}
