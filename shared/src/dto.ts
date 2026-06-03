@@ -1,6 +1,6 @@
 // REST 요청/응답 DTO 계약. 컨트롤러와 프런트 api 클라이언트가 공유한다.
 
-import type { Friend, Message, Notice, PublicUser, Room, FileMeta, PushSubscription } from './models.js';
+import type { Friend, Message, Notice, PublicUser, Room, FileMeta, PushSubscription } from './models';
 
 // ---- auth ----
 export interface RegisterDto { inviteCode: string; username: string; password: string; nickname: string; }

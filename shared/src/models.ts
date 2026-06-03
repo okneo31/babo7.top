@@ -1,7 +1,7 @@
 // 도메인 모델 — API 응답/소켓 페이로드의 공용 형태.
 // MongoDB 영속 스키마(backend/src/database/schemas)는 이 형태와 정합해야 한다.
 
-import type { MessageType, RoomType } from './enums.js';
+import type { MessageType, RoomType } from './enums';
 
 /** 웹푸시 구독 (#1) */
 export interface PushSubscription {

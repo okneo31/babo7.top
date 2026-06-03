@@ -27,10 +27,12 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // 모노레포: web 루트 밖의 ../shared 소스를 dev 서버가 서빙하도록 허용
+    fs: { allow: [fileURLToPath(new URL('..', import.meta.url))] },
     proxy: {
-      '/api': 'http://localhost:80',
-      '/files': 'http://localhost:80',
-      '/socket.io': { target: 'http://localhost:80', ws: true },
+      '/api': 'http://localhost:3000',
+      '/files': 'http://localhost:3000',
+      '/socket.io': { target: 'http://localhost:3000', ws: true },
     },
   },
 });

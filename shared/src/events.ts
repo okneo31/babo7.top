@@ -1,6 +1,6 @@
 // Socket.IO 이벤트 계약. 게이트웨이와 프런트 소켓 클라이언트가 공유한다.
 
-import type { Message, ReplyRef } from './models.js';
+import type { Message, ReplyRef } from './models';
 
 // ===== Client → Server =====
 export interface ClientToServerEvents {
