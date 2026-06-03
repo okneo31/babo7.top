@@ -1,10 +1,11 @@
 // 방 목록. 검색 + 즐겨찾기(localStorage) + 선택. 현재 방 강조.
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Room } from '@babotalk/shared';
 import { api } from '@/api/client';
 import { useAuth } from '@/store/auth';
 import { useUi } from '@/store/ui';
+import { getSocket } from '@/socket/socket';
 import { getAvatarColor, getInitial } from '@/lib/avatar';
 
 const LS_FAV = 'bt_favorites';
@@ -28,24 +29,46 @@ export function RoomList({ reloadKey }: { reloadKey: number }) {
   const [favs, setFavs] = useState<string[]>(loadFavs);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let alive = true;
-    setLoading(true);
-    api
+  const load = useCallback(() => {
+    return api
       .rooms()
-      .then((r) => {
-        if (alive) setRooms(r);
-      })
+      .then((r) => setRooms(r))
       .catch(() => {
         /* ignore */
       })
-      .finally(() => {
-        if (alive) setLoading(false);
-      });
-    return () => {
-      alive = false;
+      .finally(() => setLoading(false));
+  }, []);
+
+  // 명시적 갱신(방 생성/입장/친구변경)
+  useEffect(() => {
+    setLoading(true);
+    void load();
+  }, [reloadKey, load]);
+
+  // 실시간 갱신: 새 메시지/읽음 이벤트가 오면 unread·lastMsg 갱신(디바운스)
+  useEffect(() => {
+    const s = getSocket();
+    if (!s) return;
+    let t: ReturnType<typeof setTimeout>;
+    const refresh = () => {
+      clearTimeout(t);
+      t = setTimeout(() => void load(), 250);
     };
-  }, [reloadKey]);
+    s.on('message', refresh);
+    s.on('user_read', refresh);
+    return () => {
+      clearTimeout(t);
+      s.off('message', refresh);
+      s.off('user_read', refresh);
+    };
+  }, [load]);
+
+  // 방을 열면 잠시 후 다시 불러와(서버의 read_room 처리 반영) 안읽음 배지 제거
+  useEffect(() => {
+    if (!currentRoom?.roomId) return;
+    const t = setTimeout(() => void load(), 400);
+    return () => clearTimeout(t);
+  }, [currentRoom?.roomId, load]);
 
   const toggleFav = (e: React.MouseEvent, roomId: string) => {
     e.stopPropagation();
