@@ -8,7 +8,7 @@ export interface LoginDto { username: string; password: string; }
 export interface AuthResult { token: string; user: PublicUser; }
 
 // ---- users / 프로필 #7 ----
-export interface UpdateProfileDto { nickname?: string; statusMessage?: string; }
+export interface UpdateProfileDto { nickname?: string; statusMessage?: string; avatarUrl?: string; }
 export interface MeResult { user: PublicUser; }
 
 // ---- friends ----

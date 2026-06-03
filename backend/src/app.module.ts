@@ -6,6 +6,7 @@ import { APP_GUARD } from '@nestjs/core';
 import configuration from './config/configuration';
 import { DatabaseModule } from './database/database.module';
 import { SecurityModule } from './common/security.module';
+import { RedisModule } from './common/redis.module';
 
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
@@ -27,6 +28,7 @@ import { WebrtcModule } from './modules/webrtc/webrtc.module';
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]), // #10 레이트리밋
     DatabaseModule,
     SecurityModule,
+    RedisModule,
     AuthModule,
     UsersModule,
     FriendsModule,
