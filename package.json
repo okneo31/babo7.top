@@ -1,34 +1,14 @@
 {
-  "name": "babo7-messenger",
-  "version": "0.1.0",
-  "description": "Secure mobile messenger with E2EE and video calling",
-  "private": true,
-  "workspaces": [
-    "mobile",
-    "backend"
-  ],
-  "scripts": {
-    "mobile": "npm run start --workspace=mobile",
-    "backend": "npm run start:dev --workspace=backend",
-    "dev": "concurrently \"npm run backend\" \"npm run mobile\"",
-    "test": "npm run test --workspaces",
-    "lint": "npm run lint --workspaces"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/okneo31/babo7.top.git"
-  },
-  "keywords": [
-    "messenger",
-    "secure",
-    "e2ee",
-    "react-native",
-    "webrtc",
-    "signal-protocol"
-  ],
-  "author": "okneo31",
-  "license": "MIT",
-  "devDependencies": {
-    "concurrently": "^8.2.2"
+  "name": "babotalk-server",
+  "version": "2.0.0",
+  "main": "server.js",
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2",
+    "redis": "^4.6.10",
+    "mongoose": "^7.6.3",
+    "bcrypt": "^5.1.1",
+    "jsonwebtoken": "^9.0.2",
+    "cors": "^2.8.5"
   }
 }

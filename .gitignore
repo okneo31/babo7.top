@@ -1,58 +1,42 @@
 # Dependencies
 node_modules/
-.pnp
-.pnp.js
 
-# Testing
-coverage/
+# Logs
 *.log
-
-# Production
-build/
-dist/
+npm-debug.log*
+logs/
 
 # Environment variables
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
+
+# Uploaded files (런타임 생성, 버전관리 제외)
+public/uploads/
+
+# Build output
+dist/
+build/
+
+# Keys / secrets (보안)
+*.pem
+*.key
+*.p12
+keys/
+secrets/
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
 
 # OS
 .DS_Store
 Thumbs.db
 
-# React Native
-mobile/.expo/
-mobile/.expo-shared/
-mobile/android/app/build/
-mobile/android/.gradle/
-mobile/ios/Pods/
-mobile/ios/build/
-
-# Keys (보안)
-*.pem
-*.key
-*.p12
-*.jks
-keys/
-secrets/
-
-# Logs
-logs/
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
 # Temp
 tmp/
 temp/
 *.tmp
+*.bak

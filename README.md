@@ -1,137 +1,83 @@
-# Babo7 Secure Messenger
+# BaboTalk (babo7.top)
 
-보안 중심의 폐쇄형 멤버십 메신저 + 영상통화 서비스 — **https://babo7.top**
+폐쇄형 멤버십 기반의 실시간 메신저 + WebRTC 영상통화 서비스 — **https://babo7.top**
 
----
-
-## 📌 현재 상태 (2026-06 기준)
-
-이 저장소에는 **두 개의 트랙**이 공존합니다.
-
-| 트랙 | 위치 | 상태 |
-|------|------|------|
-| **운영 버전 (모놀리식)** | [`legacy/`](./legacy) | ✅ **현재 babo7.top에서 라이브 서비스 중** |
-| **재작성 버전 (NestJS + React Native)** | `backend/`, `mobile/` | 🚧 설계/스캐폴드 단계 (미배포) |
-
-> 실제 사용자가 접속하는 babo7.top은 **`legacy/`의 단일 파일 Express 모놀리식**으로 동작합니다.
-> 아래 "핵심 보안 기능 / Signal Protocol" 등은 재작성 버전의 **목표 아키텍처**이며 아직 구현 전입니다.
+초대코드로만 가입하는 비공개 메신저로, 단일 파일 Express 서버와 PWA 프런트엔드로 동작합니다.
 
 ---
 
-## 🟢 운영 버전 (legacy/) — 지금 돌아가는 코드
+## ✨ 기능
 
-단일 파일 Express 앱으로, 폐쇄형 초대제 메신저입니다.
+- **가입/인증**: 초대코드 기반 가입, JWT 로그인 (관리자 슈퍼계정 별도)
+- **대화방**: 공개방 · 비밀방(코드 입장) · 채널 · 1:1 DM
+- **메시지**: 실시간 채팅(Socket.IO), 읽음 확인, 수정/삭제, 대화 내 검색
+- **파일 전송**: 디스크 스트리밍 업로드 (대용량 OOM 방지)
+- **친구**: 아이디·닉네임 검색으로 친구 추가, 친구 목록, 1:1 대화 바로가기
+- **영상통화**: WebRTC 다자 영상/음성 (coturn TURN 서버 경유, LTE/5G 지원)
+- **보안/운영**: 메시지 폭파 타이머, 관리자 공지·통계·시스템 리셋
+- **PWA**: 아이폰/안드로이드 홈 화면 설치, 푸시 알림
 
-### 기능
-- 초대코드 기반 가입 / JWT 로그인
-- 공개방 · 비밀방(코드) · 채널 · 1:1 DM
-- 실시간 채팅 (Socket.IO), 읽음 확인, 메시지 수정/삭제
-- 파일 전송 (디스크 스트리밍), 대화 검색
-- 친구 목록 / 친구 추가 (아이디·닉네임 검색)
-- WebRTC 영상/음성 통화 (coturn TURN 서버)
-- 메시지 폭파 타이머, 관리자 공지/통계/시스템 리셋
-- PWA (아이폰 홈 화면 설치 지원)
+## 🛠 기술 스택
 
-### 기술 스택
-- **런타임**: Node.js 18 (Express + Socket.IO + Mongoose)
-- **DB / 캐시**: MongoDB, Redis
-- **프록시 / TLS**: Caddy
-- **미디어**: coturn (TURN/STUN)
-- **인프라**: Oracle Cloud (VM.Standard.A1.Flex, Ubuntu) + Docker Compose
+| 영역 | 사용 기술 |
+|------|-----------|
+| 서버 | Node.js 18, Express, Socket.IO, Mongoose |
+| DB / 캐시 | MongoDB, Redis |
+| 프록시 / TLS | Caddy |
+| 미디어 | coturn (TURN/STUN) |
+| 인프라 | Oracle Cloud (VM.Standard.A1.Flex, Ubuntu) + Docker Compose |
 
-### 구성 파일
-`legacy/` 폴더 참고 — `server.js`(서버 전체), `public/index.html`(프런트 전체),
-`docker-compose.yml`, `Caddyfile`, `package.json`.
-
-### 최근 변경
-- **한글 닉네임 친구 추가 버그 수정 (유니코드 NFC 정규화)** — iOS/macOS의 NFD 조합형 입력과
-  DB의 NFC 완성형 저장이 불일치해 닉네임 매칭이 실패하던 문제를 입력 경계 NFC 통일로 해결.
-  자세한 내용은 [`legacy/README.md`](./legacy/README.md) 참고.
-
----
-
-## 🚧 재작성 버전 (backend/ + mobile/) — 목표 아키텍처
-
-차세대 버전은 E2EE를 적용한 NestJS 백엔드 + React Native 앱으로 재작성을 계획 중입니다.
-아래 내용은 **구현 목표**이며 현재는 스캐폴드 상태입니다.
-
-### 🔒 목표 보안 기능
-- **End-to-End 암호화 (E2EE)**: Signal Protocol 기반
-- **완전 순방향 비밀성 (Perfect Forward Secrecy)**
-- **안전한 키 교환**: X3DH (Extended Triple Diffie-Hellman)
-- **메시지 자동 삭제** (선택 사항)
-- **스크린샷 방지**, **생체 인증 지원**
-
-### 🛠 목표 기술 스택
-- **모바일**: React Native, TypeScript, Redux Toolkit, React Navigation, WebRTC, react-native-fast-crypto
-- **백엔드**: NestJS, TypeScript, Socket.io, WebRTC Signaling, JWT
-- **데이터/인프라**: Supabase(PostgreSQL), Redis, S3 호환 스토리지
-
-### 🔐 Signal Protocol 설계
-- **Identity Key**: 장기 공개/개인 키 쌍
-- **Signed Prekey**: 주기적으로 갱신되는 서명 키
-- **One-time Prekeys**: 일회성 키 번들
-- **Double Ratchet Algorithm**: 메시지 암호화
-- 클라이언트 측 암호화 / 서버는 암호문만 저장·전달 / 키는 클라이언트에만 보관
-
----
-
-## 📁 프로젝트 구조
+## 📁 구조
 
 ```
 babo7.top/
-├── legacy/              # ✅ 현재 운영 중인 모놀리식 (Express)
-│   ├── server.js        #    서버 전체 (인증/방/메시지/친구/WebRTC 시그널링)
-│   ├── public/          #    프런트엔드 (index.html, PWA 자산)
-│   ├── docker-compose.yml
-│   ├── Caddyfile
-│   └── package.json
-│
-├── backend/             # 🚧 재작성 NestJS 서버 (스캐폴드)
-│   └── src/modules/     #    auth, chat, conversations, messages, users, webrtc
-│
-├── mobile/              # 🚧 재작성 React Native 앱 (스캐폴드)
-│   └── src/
-│
-├── docs/                # 문서 (SECURITY, SETUP, DATABASE_SCHEMA)
-└── README.md
+├── server.js            # 서버 전체 (인증·방·메시지·친구·WebRTC 시그널링)
+├── public/
+│   ├── index.html       # 프런트엔드 전체 (채팅 UI, PWA)
+│   ├── icon.svg
+│   ├── manifest.json
+│   └── manual.html
+├── docker-compose.yml   # app(node) + mongo + redis + caddy + coturn
+├── Caddyfile            # 리버스 프록시 / 자동 TLS
+└── package.json
 ```
 
-## 🚦 시작하기
+> `server.js`는 의도적으로 단일 파일로 유지되는 모놀리식입니다.
+> 인증, 방, 메시지, 친구, 파일 업로드 HTTP 라우트와 Socket.IO 이벤트(채팅/읽음/통화 시그널링)를 한 파일에서 처리합니다.
 
-### 운영 버전 (legacy) 로컬 실행
+## 🚦 실행
+
+### 로컬 (Docker Compose)
 ```bash
 git clone https://github.com/okneo31/babo7.top.git
-cd babo7.top/legacy
+cd babo7.top
 docker compose up -d        # app + mongo + redis + caddy + coturn
 ```
+앱은 컨테이너 내부 80포트에서 구동되고 Caddy가 외부 80/443을 처리합니다.
 
-### 재작성 버전 (개발 중)
+### 단독 실행 (MongoDB/Redis 별도 구동 시)
 ```bash
-cd backend && npm install   # NestJS 서버
-cd ../mobile && npm install # React Native 앱
+npm install
+node server.js              # 기본 80포트
 ```
-각 프로젝트에 `.env` 파일 필요 (`.env.example` 참고).
+서버는 `mongodb://mongo:27017/babotalk` 와 `redis://redis:6379` 에 연결합니다(Compose 네트워크 기준).
 
-## 📝 개발 상태
+## 🔧 운영 메모
 
-- [x] 운영 모놀리식(legacy) — **라이브 서비스 중**
-- [x] 재작성 프로젝트 초기 스캐폴드
-- [ ] NestJS 백엔드 구현
-- [ ] React Native 앱 UI/UX
-- [ ] E2EE (Signal Protocol) 구현
-- [ ] WebRTC 영상통화 (재작성본)
-- [ ] 재작성본 배포 및 마이그레이션
+- **영상통화 포트(필수)**: coturn용 `UDP 3478`(시그널), `UDP 49160-49200`(미디어), `TCP 80/443`(웹)을 방화벽에서 열어야 합니다.
+- **관리자**: 슈퍼 관리자 계정으로 공지 발송 / 접속 통계 / 시스템 리셋 가능.
+- **초대코드**: 관리자가 생성한 6자리 코드로 가입. (비상용 마스터 키 별도)
+
+## 📝 변경 이력 (주요)
+
+- **한글 닉네임 친구 추가 버그 수정 (유니코드 NFC 정규화)**
+  DB는 한글을 NFC(완성형)로 저장하는데 iOS/macOS 입력은 NFD(조합형)로 전송되어,
+  글자가 같아도 코드포인트가 달라 닉네임 매칭이 실패했다. 서버 입력 경계에서 신원/매칭 필드
+  (`username`, `nickname`, `friendId`, `myNick` 등)를 `normalize('NFC')`로 통일해 해결.
+  적용: register / login / friends / add-friend / dm-room / rooms / create-room / join-room,
+  소켓 join_room · msg · read_msg · read_room. add-friend에 로그인 정보 null 가드 추가.
+- 파일 업로드 OOM 버그 수정: `express.raw()` 메모리 적재 → `req.pipe()` 디스크 스트리밍 전환.
 
 ## 📄 라이선스
 
-MIT License
-
-## 👥 기여자
-
-- [@okneo31](https://github.com/okneo31)
-
----
-
-**⚠️ 주의**: 재작성 버전(backend/, mobile/)은 개발 중입니다. 프로덕션 사용 전 보안 감사를 받으세요.
-운영 중인 서비스는 `legacy/` 버전입니다.
+MIT License — [@okneo31](https://github.com/okneo31)
