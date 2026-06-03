@@ -1,14 +1,26 @@
 {
-  "name": "babotalk-server",
+  "name": "babotalk",
   "version": "2.0.0",
-  "main": "server.js",
-  "dependencies": {
-    "express": "^4.18.2",
-    "socket.io": "^4.7.2",
-    "redis": "^4.6.10",
-    "mongoose": "^7.6.3",
-    "bcrypt": "^5.1.1",
-    "jsonwebtoken": "^9.0.2",
-    "cors": "^2.8.5"
-  }
+  "private": true,
+  "description": "BaboTalk — 보안 메신저 (NestJS + React 모노레포)",
+  "workspaces": [
+    "shared",
+    "backend",
+    "web"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,green \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:api": "npm run start:dev --workspace=backend",
+    "dev:web": "npm run dev --workspace=web",
+    "build": "npm run build --workspace=backend && npm run build --workspace=web",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/okneo31/babo7.top.git"
+  },
+  "license": "MIT"
 }

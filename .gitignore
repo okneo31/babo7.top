@@ -1,39 +1,39 @@
 # Dependencies
 node_modules/
 
-# Logs
-*.log
-npm-debug.log*
-logs/
-
-# Environment variables
-.env
-.env.*
-!.env.example
-
-# Uploaded files (런타임 생성, 버전관리 제외)
-public/uploads/
-
 # Build output
 dist/
 build/
+web/dist/
+backend/dist/
+*.tsbuildinfo
 
-# Keys / secrets (보안)
+# Env / secrets
+.env
+.env.*
+!.env.example
 *.pem
 *.key
 *.p12
 keys/
 secrets/
 
-# IDE
+# Uploaded files (런타임)
+uploads/
+backend/uploads/
+legacy/public/uploads/
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+
+# IDE / OS
 .vscode/
 .idea/
-*.swp
-*.swo
-
-# OS
 .DS_Store
 Thumbs.db
+*.swp
 
 # Temp
 tmp/
