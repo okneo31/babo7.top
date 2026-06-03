@@ -11,7 +11,7 @@ const AVATAR_COLORS = [
   'from-fuchsia-500 to-pink-500',
 ];
 
-/** 이름 기반 결정적 그라데이션 색상 (Tailwind from-*/to-* 클래스). */
+/** 이름 기반 결정적 그라데이션 색상 (Tailwind from/to 클래스). */
 export function getAvatarColor(name: string): string {
   const n = name || '?';
   let hash = 0;

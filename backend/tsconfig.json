@@ -4,10 +4,9 @@
     "moduleResolution": "Node",
     "target": "ES2021",
     "outDir": "./dist",
-    "rootDirs": ["./src", "../shared/src"],
     "baseUrl": ".",
     "paths": {
-      "@babotalk/shared": ["../shared/src/index.ts"]
+      "@babotalk/shared": ["../shared/dist/index.d.ts"]
     },
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
@@ -18,5 +17,5 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true
   },
-  "include": ["src/**/*.ts", "../shared/src/**/*.ts"]
+  "include": ["src/**/*.ts"]
 }

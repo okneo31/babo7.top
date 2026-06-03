@@ -13,7 +13,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
   const [showUsers, setShowUsers] = useState(false);
 
   const refreshStats = () => api.adminStats().then(setStats).catch(() => setStats(null));
-  useEffect(refreshStats, []);
+  useEffect(() => { refreshStats(); }, []);
 
   const sendNotice = async () => {
     if (!notice.trim()) return;
