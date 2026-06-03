@@ -1,0 +1,59 @@
+version: '3'
+services:
+  app:
+    image: node:18
+    working_dir: /app
+    volumes:
+      - ./:/app
+    command: sh -c "npm install && node server.js"
+    depends_on:
+      - redis
+      - mongo
+    restart: always
+
+  redis:
+    image: redis:alpine
+    restart: always
+
+  mongo:
+    image: mongo
+    restart: always
+    volumes:
+      - mongo-data:/data/db
+
+  caddy:
+    image: caddy:alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
+  # 👇 [중계 서버 설정]
+  coturn:
+    image: coturn/coturn
+    restart: always
+    network_mode: "host" # 호스트 네트워크 사용 (필수)
+    command:
+      - -n
+      - --log-file=stdout
+      - --min-port=49160
+      - --max-port=49200
+      - --realm=babo7.top
+      - --listening-port=3478
+      - --user=babo:1234
+      - --lt-cred-mech
+      - --fingerprint
+      - --no-cli
+      # 👇 [중요] 여기에 본인 오라클 서버 공인 IP를 적으세요! (예: 152.123.45.67)
+      - --external-ip=193.123.252.130
+
+volumes:
+  caddy_data:
+  caddy_config:
+  mongo-data:

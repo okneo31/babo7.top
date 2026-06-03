@@ -1,0 +1,3 @@
+babo7.top {
+    reverse_proxy app:80
+}

@@ -1,0 +1,17 @@
+{
+  "name": "바보톡",
+  "short_name": "바보톡",
+  "description": "최고의 보안 메신저",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#059669",
+  "theme_color": "#059669",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

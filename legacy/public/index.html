@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#17212b">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="바보톡">
+    <link rel="apple-touch-icon" href="/icon.svg">
+    <title>바보톡 v3.0</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><defs><linearGradient id=%22bg%22 x1=%220%%22 y1=%220%%22 x2=%22100%%22 y2=%22100%%22><stop offset=%220%%22 stop-color=%22%2338bdf8%22/><stop offset=%22100%%22 stop-color=%22%230284c7%22/></linearGradient></defs><rect width=%22100%22 height=%22100%22 rx=%2222%22 fill=%22url(%23bg)%22/><path d=%22M 30 45 V 30 A 20 20 0 0 1 70 30 V 45%22 fill=%22none%22 stroke=%22%23FFFFFF%22 stroke-width=%2212%22 stroke-linecap=%22round%22/><rect x=%2215%22 y=%2245%22 width=%2270%22 height=%2245%22 rx=%228%22 fill=%22%23FFFFFF%22/><circle cx=%2250%22 cy=%2260%22 r=%227%22 fill=%22%230284c7%22/><path d=%22M 46 60 L 43 78 H 57 L 54 60 Z%22 fill=%22%230284c7%22/></svg>">
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --tg-bg: #0e1621; --tg-sidebar: #17212b; --tg-my-msg: #2b5278; --tg-other-msg: #182533; --tg-input: #242f3d; --tg-text: #f5f5f5; --tg-muted: #7f91a4; --tg-primary: #38bdf8; }
+        body { font-family: 'Pretendard', -apple-system, sans-serif; background-color: var(--tg-bg); color: var(--tg-text); height: 100vh; height: 100dvh; }
+        .glass-panel { background: rgba(23, 33, 43, 0.85); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .input-style { background: var(--tg-input); border: 1px solid transparent; padding: 12px; border-radius: 12px; width: 100%; color: white; outline: none; transition: 0.2s; }
+        .input-style:focus { border: 1px solid var(--tg-primary); }
+        .btn-primary { background: var(--tg-primary); color: #0f172a; padding: 14px; border-radius: 12px; width: 100%; font-weight: bold; font-size: 1.1rem; transition: 0.2s; }
+        .btn-primary:hover { opacity: 0.9; }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-thumb { background: #2a394a; border-radius: 10px; }
+        .msg-bubble { position: relative; padding: 10px 16px; border-radius: 20px; font-size: 0.95rem; box-shadow: 0 1px 2px rgba(0,0,0,0.15); word-break: break-word; line-height: 1.4; }
+        .msg-me { background-color: var(--tg-my-msg); border-bottom-right-radius: 4px; color: #fff; }
+        .msg-other { background-color: var(--tg-other-msg); border-bottom-left-radius: 4px; color: #fff; }
+        .msg-menu { display: none; position: absolute; top: -30px; right: 0; background: #222; border-radius: 8px; padding: 4px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); z-index: 10; gap: 4px;}
+        .group:hover .msg-menu { display: flex; }
+        .file-preview img, .file-preview video { max-width: 220px; border-radius: 12px; margin-top: 6px; }
+        #sidebar, #chat-area, #auth-screen { padding-top: env(safe-area-inset-top); }
+        #input-area { padding-bottom: max(12px, env(safe-area-inset-bottom)) !important; }
+        .room-item { transition: all 0.2s ease-in-out; }
+        .room-item:hover { background-color: var(--tg-input); }
+        .btn-soft { background: rgba(255,255,255,0.05); color: var(--tg-text); transition: 0.2s; }
+        .btn-soft:hover { background: rgba(255,255,255,0.1); }
+        .btn-danger-soft { background: rgba(239, 68, 68, 0.1); color: #ef4444; transition: 0.2s; }
+        .btn-danger-soft:hover { background: rgba(239, 68, 68, 0.2); }
+        /* 체크박스 스타일링 */
+        .invite-checkbox:checked { accent-color: var(--tg-primary); }
+    </style>
+</head>
+<body class="flex flex-col overflow-hidden relative">
+
+    <div id="loading-overlay" class="hidden fixed inset-0 z-[9999] bg-[#0e1621]/90 flex flex-col items-center justify-center backdrop-blur-md transition-opacity">
+        <div class="animate-spin rounded-full h-14 w-14 border-4 border-sky-500/30 border-t-sky-500 mb-6"></div>
+        <div class="text-sky-400 font-bold text-lg animate-pulse" id="loading-text">파일 전송 중...</div>
+    </div>
+
+    <div id="global-notice-modal" class="hidden fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md items-center justify-center p-4">
+        <div class="bg-[#17212b] border border-sky-500/50 w-full max-w-sm p-6 rounded-2xl relative shadow-2xl">
+            <div class="flex justify-center -mt-12 mb-4"><div class="w-16 h-16 bg-sky-500 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(56,189,248,0.5)] ring-4 ring-[#17212b]"><span class="text-3xl text-white">📢</span></div></div>
+            <h3 class="font-bold text-xl mb-4 text-white text-center">전체 공지사항</h3>
+            <div id="global-notice-text" class="text-gray-300 text-[15px] whitespace-pre-wrap mb-6 bg-[#0e1621] p-4 rounded-xl border border-white/5 max-h-[40vh] overflow-y-auto leading-relaxed"></div>
+            <button onclick="closeNotice()" class="btn-primary bg-sky-500 text-white w-full py-3">확인했습니다</button>
+        </div>
+    </div>
+
+    <div id="auth-screen" class="flex flex-col items-center justify-center h-full p-6 z-50 absolute inset-0 bg-[#0e1621]">
+        <div class="bg-[#17212b] p-8 rounded-3xl w-full max-w-sm shadow-2xl border border-white/5">
+            <div class="flex justify-center mb-4"><div class="w-16 h-16 bg-sky-500 rounded-2xl flex items-center justify-center shadow-lg rotate-3"><span class="text-3xl text-white">💬</span></div></div>
+            <h1 class="text-3xl font-bold text-white mb-1 text-center tracking-tight">바보톡</h1>
+            <p class="text-center text-[#7f91a4] text-sm mb-8">SECURE MESSENGER</p>
+            <form id="login-form" class="space-y-4" onsubmit="event.preventDefault(); doLogin();">
+                <input id="l-id" name="username" type="text" placeholder="아이디" class="input-style" autocomplete="username" required>
+                <input id="l-pw" name="password" type="password" placeholder="비밀번호" class="input-style" autocomplete="current-password" required>
+                <button type="submit" class="btn-primary mt-4 shadow-lg shadow-sky-500/20">로그인</button>
+                <p onclick="toggleAuth('register')" class="text-sm text-sky-400 text-center cursor-pointer hover:text-sky-300 transition mt-4 font-semibold">새 계정 만들기</p>
+            </form>
+            <form id="register-form" class="hidden space-y-4" onsubmit="event.preventDefault(); doRegister();">
+                <input id="r-code" type="text" placeholder="초대 코드" class="input-style text-center text-sky-400 font-bold" required>
+                <input id="r-id" name="username" type="text" placeholder="아이디" class="input-style" autocomplete="username" required>
+                <input id="r-pw" name="new-password" type="password" placeholder="비밀번호" class="input-style" autocomplete="new-password" required>
+                <input id="r-nick" type="text" placeholder="닉네임" class="input-style" required>
+                <button type="submit" class="btn-primary mt-4 bg-[#242f3d] text-white hover:bg-[#2a394a]">회원가입</button>
+                <p onclick="toggleAuth('login')" class="text-sm text-[#7f91a4] text-center cursor-pointer hover:text-white transition mt-4">👈 로그인으로 돌아가기</p>
+            </form>
+        </div>
+    </div>
+
+    <div id="main-layout" class="hidden flex-1 flex h-full w-full">
+        <div id="sidebar" class="w-full md:w-80 bg-[var(--tg-sidebar)] flex flex-col border-r border-white/5 transition-all duration-300 z-20">
+            <div class="p-4 border-b border-white/5 flex justify-between items-center bg-[var(--tg-sidebar)]">
+                <div class="flex items-center gap-3">
+                    <div id="my-avatar" class="w-10 h-10 rounded-full bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-sm"></div>
+                    <div>
+                        <h2 class="font-bold text-white text-base leading-tight" id="my-nick-display">요원</h2>
+                        <div class="text-[11px] text-[var(--tg-muted)]" id="my-id-display">@userid</div>
+                    </div>
+                </div>
+                <div class="flex gap-1.5">
+                    <button onclick="generateMemberInvite()" class="btn-soft p-2 rounded-xl text-lg shrink-0 flex items-center justify-center" title="초대장">📩</button>
+                    <button onclick="openCreateRoomModal()" class="btn-soft p-2 rounded-xl text-lg shrink-0 flex items-center justify-center" title="방 만들기">➕</button>
+                    <button onclick="openModal('join-secret-modal')" class="bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 p-2 rounded-xl text-lg shrink-0 flex items-center justify-center shadow-sm" title="비밀방 입장">🔒</button>
+                    <button onclick="doLogout()" class="btn-danger-soft p-2 rounded-xl text-lg shrink-0 flex items-center justify-center" title="로그아웃">🚪</button>
+                </div>
+            </div>
+            
+            <div class="flex text-sm text-[#7f91a4] border-b border-white/5 bg-[#17212b] shrink-0">
+                <button id="tab-btn-rooms" onclick="switchTab('rooms')" class="flex-1 py-3 font-bold text-sky-400 border-b-2 border-sky-400 transition">💬 대화방</button>
+                <button id="tab-btn-friends" onclick="switchTab('friends')" class="flex-1 py-3 font-bold border-b-2 border-transparent hover:text-white transition">👥 친구 목록</button>
+            </div>
+
+            <div id="room-list-container" class="flex-1 flex flex-col min-h-0">
+                <div class="p-3 bg-[var(--tg-sidebar)] shrink-0">
+                    <div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-[#7f91a4]">🔍</span><input type="text" id="room-search" placeholder="채팅방 검색..." class="input-style pl-9 py-2 bg-[#0e1621] text-sm" onkeyup="filterRooms()"></div>
+                </div>
+                <div id="room-list-view" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
+            </div>
+
+            <div id="friend-list-container" class="hidden flex-1 flex flex-col min-h-0">
+                <div class="p-3 bg-[var(--tg-sidebar)] border-b border-white/5 shrink-0">
+                    <div class="flex gap-2">
+                        <input type="text" id="friend-id-input" placeholder="아이디 또는 닉네임 검색..." class="input-style py-2 bg-[#0e1621] text-sm flex-1">
+                        <button onclick="addFriend()" class="bg-sky-500 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md shrink-0 hover:bg-sky-400 transition">추가</button>
+                    </div>
+                </div>
+                <div id="friend-list-view" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
+            </div>
+        </div>
+
+        <div id="chat-area" class="hidden md:flex flex-col flex-1 bg-[var(--tg-bg)] relative w-full min-w-0">
+            <div id="video-grid" class="hidden bg-[#17212b] p-3 gap-3 overflow-x-auto h-48 shrink-0 border-b border-white/5 shadow-inner">
+                <div class="relative h-full aspect-video bg-black rounded-xl overflow-hidden shrink-0 ring-2 ring-sky-500">
+                    <video id="local-video" autoplay playsinline muted class="h-full w-full object-cover"></video>
+                    <div class="absolute bottom-2 left-2 bg-black/60 backdrop-blur px-2 py-0.5 rounded-md text-white text-xs font-bold">나</div>
+                </div>
+            </div>
+            
+            <div class="glass-panel px-3 py-2 flex justify-between items-center z-10 sticky top-0 w-full shrink-0">
+                <div class="flex items-center gap-2 overflow-hidden flex-1 min-w-0 pr-2">
+                    <button onclick="showSidebarOnMobile()" class="md:hidden text-[#7f91a4] hover:text-white text-2xl px-1 shrink-0">◀</button>
+                    <div class="flex flex-col cursor-pointer truncate min-w-0" onclick="copyRoomInfo()">
+                        <span id="room-title" class="font-bold text-white text-lg truncate tracking-tight">대화방 선택</span>
+                        <span id="room-code-display" class="text-[11px] text-[var(--tg-primary)] font-mono mt-0.5 truncate"></span>
+                    </div>
+                </div>
+                
+                <div id="chat-header-btns" class="hidden flex gap-1.5 items-center shrink-0">
+                    <button onclick="openModal('search-chat-modal')" class="btn-soft px-2.5 py-1.5 rounded-lg text-[15px] shrink-0" title="검색">🔍</button>
+                    <button id="join-call-btn" onclick="startCall()" class="bg-sky-500/10 text-sky-400 hover:bg-sky-500 hover:text-white transition px-2.5 py-1.5 rounded-lg text-[15px] shrink-0" title="화상통화">📞</button>
+                    <div id="admin-controls" class="hidden flex gap-1 items-center ml-1 pl-2 border-l border-white/10 shrink-0">
+                        <select id="nuke-val" class="bg-[#242f3d] text-[11px] text-white px-1.5 py-2 rounded-lg outline-none font-bold cursor-pointer shrink-0">
+                            <option value="0">즉시</option><option value="1">1분</option><option value="60">1시</option><option value="1440">24시</option>
+                        </select>
+                        <button onclick="executeNuke()" class="btn-danger-soft px-2.5 py-1.5 rounded-lg text-[15px] shrink-0 shadow-sm" title="폭파">💣</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="countdown-bar" class="hidden bg-red-500/90 backdrop-blur-md text-white text-sm text-center py-1.5 font-bold animate-pulse shadow-md z-10 shrink-0">⏳ <span id="countdown">대기중...</span></div>
+            
+            <div id="call-controls" class="hidden justify-center gap-8 py-4 bg-[#17212b] border-b border-white/5 shadow-lg z-10 shrink-0">
+                <button onclick="toggleMute()" id="btn-mute" class="btn-soft rounded-full w-14 h-14 flex items-center justify-center text-2xl shadow-sm">🎤</button>
+                <button onclick="toggleCam()" id="btn-cam" class="btn-danger-soft rounded-full w-14 h-14 flex items-center justify-center text-2xl shadow-sm">📷</button>
+                <button onclick="endCall()" class="bg-red-500 text-white hover:bg-red-600 rounded-full w-14 h-14 flex items-center justify-center text-2xl shadow-md transition transform hover:scale-105">✕</button>
+            </div>
+            
+            <div id="messages" class="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-5 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] bg-fixed w-full min-w-0"></div>
+            
+            <div id="readonly-banner" class="hidden px-4 py-4 bg-[var(--tg-sidebar)] text-center text-[#7f91a4] font-bold text-[15px] z-10 w-full shrink-0 border-t border-white/5">
+                📢 채널 관리자만 메시지를 보낼 수 있습니다.
+            </div>
+
+            <div id="input-area" class="hidden px-3 pt-2 pb-3 bg-[var(--tg-sidebar)] flex gap-2 items-end z-10 w-full shrink-0 border-t border-white/5">
+                <label class="cursor-pointer text-[#7f91a4] hover:text-sky-400 p-2.5 rounded-full transition shrink-0 flex items-center justify-center" title="파일 첨부">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-7 h-7"><path stroke-linecap="round" stroke-linejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" /></svg>
+                    <input type="file" id="file-input" class="hidden" onchange="uploadFile()">
+                </label>
+                <form onsubmit="event.preventDefault(); sendMsg();" class="flex-1 flex gap-2 items-end bg-[var(--tg-input)] rounded-3xl pr-1.5 border border-transparent focus-within:border-sky-500/50 transition-all shadow-sm w-full min-w-0">
+                    <textarea id="msg-input" rows="1" class="bg-transparent w-full text-[15px] text-white py-3 pl-4 pr-1 outline-none resize-none max-h-24 min-w-0" placeholder="메시지 입력..." onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); sendMsg();}"></textarea>
+                    <button type="submit" class="bg-sky-500 hover:bg-sky-400 text-white rounded-full w-9 h-9 mb-1.5 shrink-0 flex items-center justify-center transition shadow-md">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 ml-0.5"><path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" /></svg>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="create-room-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-[#17212b] border border-white/10 w-full max-w-sm p-6 rounded-2xl relative shadow-2xl flex flex-col max-h-[90vh]">
+            <button onclick="closeModal('create-room-modal')" class="absolute top-4 right-4 text-xl text-[#7f91a4] hover:text-white">✕</button>
+            <h3 class="font-bold text-xl mb-4 text-white shrink-0">새 방 / 채널 만들기</h3>
+            
+            <div class="overflow-y-auto pr-1 flex-1 space-y-4">
+                <input id="c-name" type="text" placeholder="방 제목" class="input-style bg-[#0e1621]">
+                <select id="c-type" class="input-style bg-[#0e1621]">
+                    <option value="public">🔓 일반 공개방 (누구나 대화)</option>
+                    <option value="channel">📢 공지 채널 (방장만 쓰기)</option>
+                    <option value="secret">🔒 비밀 그룹방 (초대 전용)</option>
+                </select>
+                <input id="c-custom-id" type="text" placeholder="방 코드 (비밀방: 선택사항)" class="input-style bg-[#0e1621] uppercase text-sm">
+                
+                <div>
+                    <label class="text-xs text-sky-400 font-bold mb-2 block">👥 초대할 친구 선택 (선택사항)</label>
+                    <div id="c-friend-list" class="max-h-36 overflow-y-auto bg-[#0e1621] rounded-xl border border-white/5 p-2 space-y-1">
+                        <div class="text-sm text-[#7f91a4] text-center py-3">친구 목록을 불러오는 중...</div>
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="createRoom()" class="btn-primary bg-sky-500 text-white shrink-0 mt-4">개설 및 초대하기</button>
+        </div>
+    </div>
+
+    <div id="join-secret-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"><div class="bg-[#17212b] border border-white/10 w-full max-w-sm p-6 rounded-2xl relative shadow-2xl"><button onclick="closeModal('join-secret-modal')" class="absolute top-4 right-4 text-xl text-[#7f91a4] hover:text-white">✕</button><h3 class="font-bold text-xl mb-6 text-white">🔒 비밀방 입장</h3><input id="s-code" type="text" placeholder="방 코드 입력" class="input-style bg-[#0e1621] mb-6 text-center uppercase text-lg tracking-widest"><button onclick="joinSecretRoom()" class="btn-primary bg-sky-500 text-white">입장하기</button></div></div>
+    <div id="admin-panel" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"><div class="bg-[#17212b] border border-red-500/30 w-full max-w-md p-6 rounded-2xl relative shadow-2xl"><button onclick="document.getElementById('admin-panel').classList.add('hidden')" class="absolute top-4 right-4 text-xl text-[#7f91a4] hover:text-white">✕</button><h2 class="text-2xl font-bold text-red-400 mb-6 text-center tracking-tight">관리자 제어판</h2><div class="space-y-4"><div class="bg-[#0e1621] p-4 rounded-xl text-sm text-gray-300 border border-white/5"><div class="flex justify-between items-center"><span class="text-[#7f91a4]">가입된 요원:</span><span id="stat-users" class="font-bold text-white text-lg">-</span></div><div class="flex justify-between items-center mt-3"><span class="text-[#7f91a4]">활성 채널:</span><span id="stat-rooms" class="font-bold text-white text-lg">-</span></div><button onclick="refreshStats()" class="w-full btn-soft py-2.5 rounded-lg mt-4 font-bold text-xs">데이터 새로고침</button></div><div><input id="admin-msg" type="text" placeholder="전체 공지 내용 입력..." class="input-style bg-[#0e1621] mb-3"><button onclick="sendAdminNotice()" class="w-full bg-blue-500/20 text-blue-400 border border-blue-500/30 py-3 rounded-xl font-bold hover:bg-blue-500 hover:text-white transition">📢 긴급 공지 발송</button></div><div class="border-t border-white/10 pt-5 mt-2"><button onclick="adminNuke()" class="w-full bg-red-500 text-white py-3.5 rounded-xl font-bold text-base shadow-lg shadow-red-500/20 hover:bg-red-600 transition">☢️ 시스템 전체 초기화</button></div></div></div></div>
+    <div id="search-chat-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"><div class="bg-[#17212b] border border-white/10 w-full max-w-md p-6 rounded-2xl relative flex flex-col max-h-[80vh] shadow-2xl"><button onclick="closeModal('search-chat-modal')" class="absolute top-4 right-4 text-xl text-[#7f91a4] hover:text-white">✕</button><h3 class="font-bold text-xl mb-5 text-white">대화 내용 검색</h3><div class="flex gap-2 mb-4"><input id="search-keyword" type="text" placeholder="키워드 입력..." class="input-style bg-[#0e1621] mb-0 flex-1" onkeypress="if(event.key === 'Enter') searchChat()"><button onclick="searchChat()" class="btn-primary bg-sky-500 text-white w-auto px-5 py-2">검색</button></div><div id="search-results" class="flex-1 overflow-y-auto space-y-3 text-sm pr-1"></div></div></div>
+
+    <script>
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const audioCtx = new AudioContext();
+        document.addEventListener('click', () => { if(audioCtx.state === 'suspended') audioCtx.resume(); }, {once:true});
+        function playSound(type) {
+            if(audioCtx.state === 'suspended') return;
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            if(type === 'msg') { osc.type = 'sine'; osc.frequency.setValueAtTime(880, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(1760, audioCtx.currentTime + 0.1); gain.gain.setValueAtTime(0.3, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2); osc.start(); osc.stop(audioCtx.currentTime + 0.2); }
+            else if(type === 'ring') { osc.type = 'square'; osc.frequency.setValueAtTime(500, audioCtx.currentTime); osc.frequency.setValueAtTime(700, audioCtx.currentTime + 0.1); gain.gain.setValueAtTime(0.1, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5); osc.start(); osc.stop(audioCtx.currentTime + 0.5); }
+        }
+        let ringTimer = null; function startRinging() { if(!ringTimer) { playSound('ring'); ringTimer = setInterval(()=>playSound('ring'), 1500); } } function stopRinging() { clearInterval(ringTimer); ringTimer = null; }
+
+        const socket = io(); let token = localStorage.getItem('token'); let myNick = localStorage.getItem('nickname'); let myUsername = localStorage.getItem('username'); let isAdmin = localStorage.getItem('isAdmin') === 'true'; let currentRoomId = null; let myStream = null; const peers = {}; let timerInterval; let isMuted = false; let isCamOff = true;
+        let favorites = JSON.parse(localStorage.getItem('favorites')) || []; let currentRoomMembers = [];
+        let currentNoticeId = null;
+
+        if (Notification.permission === "default") { Notification.requestPermission(); }
+        socket.on('connect', () => { if (currentRoomId && myNick) { socket.emit('join_room', { roomId: currentRoomId, nickname: myNick }); } });
+        document.addEventListener('visibilitychange', () => { if (!document.hidden && currentRoomId) { socket.emit('read_room', { roomId: currentRoomId, nickname: myNick }); } });
+
+        if(token && myNick && !myUsername) { alert("앱 업데이트가 완료되었습니다. 다시 로그인해 주세요."); doLogout(); }
+        else if(token && myNick && myUsername) showMainLayout();
+
+        const tx = document.getElementById('msg-input');
+        tx.setAttribute('style', 'height:' + (tx.scrollHeight) + 'px;overflow-y:hidden;');
+        tx.addEventListener("input", OnInput, false);
+        function OnInput() { this.style.height = 'auto'; this.style.height = (this.scrollHeight) + 'px'; }
+
+        function getAvatarColor(name) {
+            const colors = ['from-red-500 to-pink-600', 'from-orange-400 to-red-500', 'from-amber-400 to-orange-500', 'from-emerald-400 to-teal-500', 'from-cyan-400 to-blue-500', 'from-blue-500 to-indigo-600', 'from-violet-500 to-purple-600', 'from-fuchsia-500 to-pink-500'];
+            let hash = 0; for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+            return colors[Math.abs(hash) % colors.length];
+        }
+
+        function toggleAuth(mode) { document.getElementById('login-form').classList.toggle('hidden', mode !== 'login'); document.getElementById('register-form').classList.toggle('hidden', mode !== 'register'); }
+        function doLogout() { if(confirm("정말로 로그아웃 하시겠습니까?")) { localStorage.clear(); location.reload(); } }
+        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+        // [신규] 방 개설 버튼 누를 때 친구 목록을 불러와서 체크박스로 뿌려주는 함수
+        async function openCreateRoomModal() {
+            document.getElementById('create-room-modal').classList.remove('hidden');
+            const list = document.getElementById('c-friend-list');
+            list.innerHTML = '<div class="text-sm text-[#7f91a4] text-center py-3">친구 목록을 불러오는 중...</div>';
+            
+            const res = await fetch('/api/friends', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username: myUsername}) }).then(r=>r.json());
+            
+            if(res.length === 0) {
+                list.innerHTML = '<div class="text-sm text-[#7f91a4] text-center py-3">추가된 친구가 없습니다.</div>';
+            } else {
+                list.innerHTML = '';
+                res.forEach(f => {
+                    list.innerHTML += `<label class="flex items-center gap-3 p-2 hover:bg-[#242f3d] rounded-lg cursor-pointer transition"><input type="checkbox" value="${f.nickname}" class="invite-checkbox w-4 h-4 rounded border-gray-600 bg-gray-700 text-sky-500 focus:ring-sky-500"><div class="w-8 h-8 rounded-full bg-gradient-to-br ${getAvatarColor(f.nickname)} flex items-center justify-center text-white font-bold text-xs shrink-0">${f.nickname.charAt(0)}</div><span class="text-[14px] text-gray-200 font-semibold">${f.nickname}</span></label>`;
+                });
+            }
+        }
+
+        function closeNotice() { if(currentNoticeId) localStorage.setItem('read_notice_id', currentNoticeId); document.getElementById('global-notice-modal').classList.add('hidden'); document.getElementById('global-notice-modal').classList.remove('flex'); }
+
+        function switchTab(tab) {
+            if(tab === 'rooms') {
+                document.getElementById('tab-btn-rooms').className = "flex-1 py-3 font-bold text-sky-400 border-b-2 border-sky-400 transition"; document.getElementById('tab-btn-friends').className = "flex-1 py-3 font-bold border-b-2 border-transparent hover:text-white transition text-[#7f91a4]";
+                document.getElementById('room-list-container').classList.remove('hidden'); document.getElementById('room-list-container').classList.add('flex'); document.getElementById('friend-list-container').classList.add('hidden'); document.getElementById('friend-list-container').classList.remove('flex'); loadRooms();
+            } else {
+                document.getElementById('tab-btn-friends').className = "flex-1 py-3 font-bold text-sky-400 border-b-2 border-sky-400 transition"; document.getElementById('tab-btn-rooms').className = "flex-1 py-3 font-bold border-b-2 border-transparent hover:text-white transition text-[#7f91a4]";
+                document.getElementById('friend-list-container').classList.remove('hidden'); document.getElementById('friend-list-container').classList.add('flex'); document.getElementById('room-list-container').classList.add('hidden'); document.getElementById('room-list-container').classList.remove('flex'); loadFriends();
+            }
+        }
+
+        async function generateMemberInvite() { try { const res = await fetch('/api/invite', { method: 'POST' }).then(r => r.json()); const msg = `[바보톡 가입 초대장]\n\n초대코드: ${res.code}\n접속주소: https://babo7.top\n\n*24시간 내에 가입하세요.`; if (navigator.share) { await navigator.share({ title: '바보톡 초대', text: msg }); } else { await navigator.clipboard.writeText(msg); alert(`초대장이 복사되었습니다!\n\n코드: ${res.code}`); } } catch(e) { prompt("아이폰 보안상 자동 복사가 차단되었습니다.\n아래 텍스트를 직접 복사하세요:", "[바보톡 초대코드]: " + (e.code || "코드생성실패")); } }
+        async function doRegister() { const code = document.getElementById('r-code').value, username = document.getElementById('r-id').value, password = document.getElementById('r-pw').value, nickname = document.getElementById('r-nick').value; const res = await fetch('/api/register', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({inviteCode:code, username, password, nickname}) }).then(r=>r.json()); if(res.success) { alert('가입 완료! 로그인하세요.'); toggleAuth('login'); } else alert(res.message); }
+        async function doLogin() { const username = document.getElementById('l-id').value, password = document.getElementById('l-pw').value; const res = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({username, password}) }).then(r=>r.json()); if(res.success) { token=res.token; myNick=res.nickname; myUsername=res.username; isAdmin=res.isAdmin; localStorage.setItem('token', token); localStorage.setItem('nickname', myNick); localStorage.setItem('username', myUsername); localStorage.setItem('isAdmin', isAdmin); showMainLayout(); } else alert(res.message); }
+
+        function showMainLayout() {
+            document.getElementById('auth-screen').classList.add('hidden'); document.getElementById('main-layout').classList.remove('hidden'); document.getElementById('my-nick-display').innerText = myNick; document.getElementById('my-id-display').innerText = '@' + myUsername; document.getElementById('my-avatar').className = `w-10 h-10 rounded-full bg-gradient-to-br ${getAvatarColor(myNick)} flex items-center justify-center text-white font-bold text-lg shadow-sm`; document.getElementById('my-avatar').innerText = myNick.charAt(0).toUpperCase();
+            if(isAdmin && !document.getElementById('admin-btn-flag')) { const btnGroup = document.querySelector('#sidebar .flex.gap-1\\.5'); const adminBtn = document.createElement('button'); adminBtn.id = 'admin-btn-flag'; adminBtn.className = "bg-red-500/20 text-red-400 border border-red-500/30 p-2 rounded-xl text-sm font-bold shrink-0 flex items-center justify-center shadow-sm"; adminBtn.innerText = "설정"; adminBtn.onclick = () => { document.getElementById('admin-panel').classList.remove('hidden'); refreshStats(); }; btnGroup.prepend(adminBtn); }
+            loadRooms();
+        }
+
+        function toggleFavorite(e, roomId) { e.stopPropagation(); if(favorites.includes(roomId)) favorites = favorites.filter(id => id !== roomId); else favorites.push(roomId); localStorage.setItem('favorites', JSON.stringify(favorites)); loadRooms(); }
+        function filterRooms() { const keyword = document.getElementById('room-search').value.toLowerCase(); document.querySelectorAll('.room-item').forEach(el => { const name = el.getAttribute('data-name').toLowerCase(); el.style.display = name.includes(keyword) ? 'flex' : 'none'; }); }
+
+        async function addFriend() { const fid = document.getElementById('friend-id-input').value.trim(); if(!fid) return alert("추가할 친구의 아이디나 닉네임을 입력하세요."); const res = await fetch('/api/add-friend', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({myUsername, friendId: fid}) }).then(r=>r.json()); if(res.success) { document.getElementById('friend-id-input').value = ''; loadFriends(); } else alert(res.message); }
+        async function loadFriends() { const list = document.getElementById('friend-list-view'); list.innerHTML = ''; const res = await fetch('/api/friends', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username: myUsername}) }).then(r=>r.json()); if(res.length === 0) { list.innerHTML = '<div class="text-center text-[#7f91a4] text-sm mt-10">등록된 친구가 없습니다.<br>아이디나 닉네임을 검색해 추가해보세요.</div>'; return; } res.forEach(f => { const el = document.createElement('div'); el.className = "room-item p-3 rounded-2xl mb-1 cursor-pointer flex justify-between items-center group bg-transparent hover:bg-[var(--tg-input)]"; el.innerHTML = `<div class="w-10 h-10 rounded-full bg-gradient-to-br ${getAvatarColor(f.nickname)} flex items-center justify-center shadow-sm shrink-0 mr-3"><span class="text-white text-sm font-bold">${f.nickname.charAt(0)}</span></div><div class="flex flex-col flex-1 truncate pr-2 justify-center min-w-0"><span class="font-bold text-gray-100 group-hover:text-sky-400 truncate text-[15px] transition-colors">${f.nickname}</span><span class="text-[11px] text-[#7f91a4] truncate">@${f.username}</span></div><button onclick="startDM('${f.nickname}')" class="bg-sky-500/20 text-sky-400 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-sky-500 hover:text-white transition shrink-0 border border-sky-500/30">1:1 대화</button>`; list.appendChild(el); }); }
+        async function startDM(friendNick) { const res = await fetch('/api/dm-room', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({myNick, friendNick}) }).then(r=>r.json()); if(res.success) { switchTab('rooms'); selectRoom(res.roomId, friendNick); } }
+        async function loadRooms() { const list = document.getElementById('room-list-view'); list.innerHTML = ''; const res = await fetch('/api/rooms', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({nickname: myNick}) }).then(r=>r.json()); res.sort((a, b) => { const aFav = favorites.includes(a.roomId), bFav = favorites.includes(b.roomId); if (aFav && !bFav) return -1; if (!aFav && bFav) return 1; return 0; }); res.forEach(room => { const unread = room.unread || 0; const isFav = favorites.includes(room.roomId); const el = document.createElement('div'); el.className = `room-item p-3 rounded-2xl mb-1 cursor-pointer flex justify-between items-center group ${currentRoomId===room.roomId ? 'bg-[var(--tg-input)]' : 'bg-transparent'}`; let displayName = room.name; let iconHtml = ''; if (room.roomId.startsWith('DM_')) { const otherUser = room.members.find(m => m !== myNick) || '알 수 없음'; displayName = `${otherUser}`; iconHtml = `<span class="text-white text-base font-bold">${displayName.charAt(0)}</span>`; } else if (room.type === 'secret') { iconHtml = `<span class="text-white text-sm">🔒</span>`; } else if (room.type === 'channel') { iconHtml = `<span class="text-white text-sm">📢</span>`; } else { iconHtml = `<span class="text-white text-base font-bold">${room.name.charAt(0)}</span>`; } el.setAttribute('data-name', displayName); const roomColor = getAvatarColor(room.roomId.startsWith('DM_') ? displayName : room.roomId); el.innerHTML = `<div class="w-12 h-12 rounded-full bg-gradient-to-br ${roomColor} flex items-center justify-center shadow-sm shrink-0 mr-3 relative">${iconHtml}${unread > 0 ? `<div class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold min-w-[20px] h-5 rounded-full flex items-center justify-center px-1 shadow-md border-2 border-[var(--tg-sidebar)]">${unread}</div>` : ''}</div><div class="flex flex-col flex-1 truncate pr-2 justify-center min-w-0"><div class="flex items-center gap-1.5"><span class="font-bold text-gray-100 group-hover:text-sky-400 truncate text-[15px] transition-colors min-w-0">${displayName}</span><span onclick="toggleFavorite(event, '${room.roomId}')" class="text-amber-400 text-sm leading-none cursor-pointer hover:scale-125 transition-transform shrink-0">${isFav ? '★' : '☆'}</span></div><span class="text-[12.5px] text-[#7f91a4] mt-1 truncate font-normal min-w-0">${room.lastMsgText || '대화가 없습니다.'}</span></div>`; el.onclick = () => selectRoom(room.roomId, displayName); list.appendChild(el); }); }
+        
+        // [변경] 체크된 친구 목록(invitees)을 배열로 모아서 서버에 전송!
+        async function createRoom() { 
+            const name = document.getElementById('c-name').value;
+            const type = document.getElementById('c-type').value;
+            const customId = document.getElementById('c-custom-id').value; 
+            
+            // 화면에서 체크된 친구들의 닉네임을 싹 모음
+            const invitees = Array.from(document.querySelectorAll('.invite-checkbox:checked')).map(cb => cb.value);
+
+            if (!name.trim()) return alert("방 제목을 입력해주세요.");
+            
+            // 비밀방인데 초대한 친구가 없다면, 코드를 직접 적어야 함. (초대한 친구가 있으면 안 적어도 알아서 방이 배달됨!)
+            if (type === 'secret' && invitees.length === 0 && (!customId || customId.trim() === '')) {
+                return alert("🔒 비밀방 개설 시 방 코드를 입력하거나 친구를 1명 이상 초대해야 합니다.");
+            }
+
+            const res = await fetch('/api/create-room', { 
+                method:'POST', 
+                headers:{'Content-Type':'application/json'}, 
+                body: JSON.stringify({name, type, owner: myNick, customId, invitees}) 
+            }).then(r=>r.json()); 
+            
+            if(res.success) { 
+                closeModal('create-room-modal'); 
+                document.getElementById('c-name').value = '';
+                document.getElementById('c-custom-id').value = '';
+                loadRooms(); 
+                selectRoom(res.roomId, name); 
+            } else alert(res.message); 
+        }
+
+        async function joinSecretRoom() { const roomId = document.getElementById('s-code').value.toUpperCase(); if (!roomId.trim()) return alert("방 코드를 입력해주세요."); const res = await fetch('/api/join-room', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({roomId, nickname: myNick}) }).then(r=>r.json()); if(res.success) { closeModal('join-secret-modal'); loadRooms(); selectRoom(roomId, res.name); } else alert(res.message); }
+        function selectRoom(roomId, roomName) { if(currentRoomId) socket.emit('leave_room'); currentRoomId = roomId; loadRooms(); if(window.innerWidth < 768) { document.getElementById('sidebar').classList.add('hidden'); document.getElementById('chat-area').classList.remove('hidden'); document.getElementById('chat-area').classList.add('flex'); } document.getElementById('room-title').innerText = roomName; document.getElementById('room-code-display').innerText = roomId.startsWith('DM_') ? `🔒 1:1 대화` : `코드: ${roomId}`; document.getElementById('messages').innerHTML = ''; document.getElementById('input-area').classList.remove('hidden'); document.getElementById('readonly-banner').classList.add('hidden'); document.getElementById('chat-header-btns').classList.remove('hidden'); document.getElementById('admin-controls').classList.add('hidden'); document.getElementById('countdown-bar').classList.add('hidden'); socket.emit('join_room', { roomId, nickname: myNick }); }
+        async function uploadFile() { const input = document.getElementById('file-input'); if(!input.files || input.files.length === 0 || !currentRoomId) return; const file = input.files[0]; if(file.size > 200 * 1024 * 1024) { alert('🚨 200MB 이하의 파일만 전송할 수 있습니다.'); input.value = ''; return; } const overlay = document.getElementById('loading-overlay'); overlay.classList.remove('hidden'); try { const response = await fetch('/api/upload?name=' + encodeURIComponent(file.name), { method: 'POST', headers: { 'Content-Type': file.type || 'application/octet-stream' }, body: file }); if (!response.ok) { if (response.status === 413) throw new Error('서버망(Nginx)의 용량 제한에 걸려 차단되었습니다.'); throw new Error(`서버 에러 발생 (코드: ${response.status})`); } const data = await response.json(); if(data.success) { socket.emit('msg', { roomId: currentRoomId, nickname: myNick, text: '', file: data.file }); } else { alert('🚨 업로드 거부: ' + data.message); } } catch(err) { console.error(err); alert("🚨 파일 전송 실패!\n\n" + err.message); } finally { overlay.classList.add('hidden'); input.value = ''; } }
+        function renderMessageUI(msg, isMe) { const timeStr = new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}); let contentHtml = ''; if (msg.isDeleted) { contentHtml = `<span class="italic text-white/50 text-sm flex items-center gap-1"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg> 삭제된 메시지입니다</span>`; } else { contentHtml = `<span class="text-[15px] whitespace-pre-wrap">${msg.text}</span>`; if(msg.isEdited) contentHtml += `<span class="text-[10px] text-white/50 ml-2 align-bottom">(수정됨)</span>`; if(msg.file) { const fileType = msg.file.type || ''; if(fileType.startsWith('image/')) contentHtml += `<div class="file-preview mt-1"><img src="${msg.file.url}" alt="image" onclick="window.open('${msg.file.url}')" class="cursor-pointer max-h-60 rounded-xl shadow-sm border border-white/10"></div>`; else if(fileType.startsWith('video/')) contentHtml += `<div class="file-preview mt-1"><video src="${msg.file.url}" controls class="max-h-60 rounded-xl shadow-sm border border-white/10"></video></div>`; else contentHtml += `<div class="mt-1 p-3 bg-black/20 rounded-xl border border-white/5 flex items-center gap-3 hover:bg-black/30 transition cursor-pointer" onclick="window.open('${msg.file.url}')"><div class="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center text-xl shrink-0">📄</div><div class="flex flex-col min-w-0"><span class="text-sky-300 font-bold text-sm truncate max-w-[160px]">${msg.file.name}</span><span class="text-xs text-white/50 mt-0.5">다운로드</span></div></div>`; } } let menuHtml = ''; if (isMe && !msg.isDeleted) { menuHtml = `<div class="msg-menu"><button onclick="editMsg('${msg._id}', '${msg.text.replace(/'/g, "\\'")}')" class="text-xs text-gray-300 hover:text-white hover:bg-white/10 px-3 py-1.5 rounded-md transition">수정</button><button onclick="deleteMsg('${msg._id}')" class="text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 px-3 py-1.5 rounded-md transition">삭제</button></div>`; } let unreadBadge = ''; if (!msg.isDeleted && currentRoomMembers.length > 0) { const readBy = msg.readBy || []; const unreadMembers = currentRoomMembers.filter(m => !readBy.includes(m)); if (unreadMembers.length > 0) { const unreadNames = unreadMembers.join(', '); unreadBadge = `<div class="text-[12px] text-sky-400 font-bold cursor-pointer mt-0.5 select-none hover:text-sky-300 transition-colors" title="안 읽은 요원 확인" onclick="alert('👀 아직 안 읽은 요원:\\n\\n${unreadNames.replace(/'/g, "\\'")}')">${unreadMembers.length}</div>`; } } const timeAndBadge = `<div class="flex flex-col ${isMe ? 'items-end mr-2' : 'items-start ml-2'} justify-end mb-1 shrink-0">${unreadBadge}<span class="text-[10px] text-[var(--tg-muted)] tracking-tighter mt-0.5">${timeStr}</span></div>`; if(isMe) { return `<div class="flex">${timeAndBadge}<div class="msg-bubble msg-me group">${menuHtml}${contentHtml}</div></div>`; } else { return `<div class="flex"><div class="msg-bubble msg-other">${contentHtml}</div>${timeAndBadge}</div>`; } }
+        function appendMessage(msg) { const list = document.getElementById('messages'); const div = document.createElement('div'); div.id = `wrap-${msg._id}`; const isMe = msg.user === myNick; div.className = isMe ? "flex justify-end mb-4" : "flex justify-start mb-4"; let avatarHtml = ''; if (!isMe) { const initial = msg.user.charAt(0).toUpperCase(); avatarHtml = `<div class="w-9 h-9 rounded-full bg-gradient-to-br ${getAvatarColor(msg.user)} flex items-center justify-center text-white font-bold text-[15px] mr-2.5 shrink-0 shadow-sm mt-0.5">${initial}</div>`; } const nameHtml = !isMe ? `<div class="text-[13px] text-sky-400 mb-1 ml-1 font-semibold tracking-tight">${msg.user}</div>` : ''; div.innerHTML = `${avatarHtml}<div class="flex flex-col max-w-[80%]">${nameHtml}${renderMessageUI(msg, isMe)}</div>`; list.appendChild(div); list.scrollTop = list.scrollHeight; }
+        function editMsg(id, oldText) { const newText = prompt("메시지 수정:", oldText); if(newText !== null && newText.trim() !== '') socket.emit('edit_msg', { msgId: id, newText }); }
+        function deleteMsg(id) { if(confirm("메시지를 삭제하시겠습니까?")) socket.emit('delete_msg', { msgId: id }); }
+        async function searchChat() { const keyword = document.getElementById('search-keyword').value; if(!keyword.trim() || !currentRoomId) return; const res = await fetch('/api/search-chat', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({roomId: currentRoomId, keyword}) }).then(r=>r.json()); const resultsDiv = document.getElementById('search-results'); resultsDiv.innerHTML = res.length === 0 ? '<p class="text-[#7f91a4] text-center mt-8 text-base">검색 결과가 없습니다.</p>' : ''; res.forEach(m => { const date = new Date(m.createdAt).toLocaleDateString() + ' ' + new Date(m.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); resultsDiv.innerHTML += `<div class="bg-[#0e1621] p-3.5 rounded-xl border border-white/5 mb-2"><div class="text-xs text-sky-400 font-bold mb-1.5 flex justify-between"><span>${m.user}</span><span class="text-[#7f91a4] font-normal">${date}</span></div><div class="text-[14px] text-white">${m.text}</div></div>`; }); }
+
+        socket.on('admin_notice', (notice) => { if (!notice || !notice.id) return; const readId = localStorage.getItem('read_notice_id'); if (readId !== notice.id) { currentNoticeId = notice.id; document.getElementById('global-notice-text').innerText = notice.text; document.getElementById('global-notice-modal').classList.remove('hidden'); document.getElementById('global-notice-modal').classList.add('flex'); } });
+        socket.on('set_role', ({ isOwner, roomType }) => { if(isOwner || isAdmin) document.getElementById('admin-controls').classList.remove('hidden'); else document.getElementById('admin-controls').classList.add('hidden'); const inputArea = document.getElementById('input-area'); const readonlyBanner = document.getElementById('readonly-banner'); if (roomType === 'channel' && !isOwner && !isAdmin) { inputArea.classList.add('hidden'); inputArea.classList.remove('flex'); readonlyBanner.classList.remove('hidden'); } else { inputArea.classList.remove('hidden'); inputArea.classList.add('flex'); readonlyBanner.classList.add('hidden'); } });
+        socket.on('room_history', (data) => { document.getElementById('messages').innerHTML = ''; if(data && data.msgs) { currentRoomMembers = data.members || []; data.msgs.forEach(m => appendMessage(m)); } else if(Array.isArray(data)) { data.forEach(m => appendMessage(m)); } });
+        socket.on('user_read_all', ({ nickname }) => { if(currentRoomId) socket.emit('request_history', { roomId: currentRoomId }); });
+        socket.on('update_history_silently', (data) => { currentRoomMembers = data.members || []; data.msgs.forEach(msg => { const wrap = document.getElementById(`wrap-${msg._id}`); if (wrap) { const isMe = msg.user === myNick; wrap.querySelector('.msg-bubble').parentElement.outerHTML = renderMessageUI(msg, isMe); } }); });
+        socket.on('msg', (msg) => { if (msg.roomId !== currentRoomId || document.hidden) { loadRooms(); if (Notification.permission === "granted" && msg.user !== myNick) { new Notification("바보톡 새 메시지", { body: `${msg.user}: ${msg.text || '파일 첨부'}` }); } } else { if(msg.user !== myNick) socket.emit('read_msg', { msgId: msg._id, nickname: myNick }); } if (msg.user !== myNick) playSound('msg'); if(msg.roomId === currentRoomId) appendMessage(msg); });
+        socket.on('update_msg', (msg) => { const wrap = document.getElementById(`wrap-${msg._id}`); if (wrap) { const isMe = msg.user === myNick; wrap.querySelector('.msg-bubble').parentElement.outerHTML = renderMessageUI(msg, isMe); } });
+        socket.on('sys_msg', msg => { document.getElementById('messages').innerHTML += `<div class="flex justify-center my-4"><span class="bg-[#17212b] text-[#7f91a4] text-[11px] font-semibold py-1 px-3 rounded-full border border-white/5">${msg}</span></div>`; });
+        function sendMsg() { const input = document.getElementById('msg-input'); if(input.value.trim() && currentRoomId) { socket.emit('msg', { roomId: currentRoomId, nickname: myNick, text: input.value }); input.value = ''; input.style.height = 'auto'; } }
+        function showSidebarOnMobile() { document.getElementById('sidebar').classList.remove('hidden'); document.getElementById('chat-area').classList.add('hidden'); document.getElementById('chat-area').classList.remove('flex'); }
+        function copyRoomInfo() { if(!currentRoomId) return; const text = `[바보톡 초대]\n방: ${document.getElementById('room-title').innerText}\n코드: ${currentRoomId}`; if(navigator.share){navigator.share({title:'방 초대', text:text});}else{navigator.clipboard.writeText(text).then(()=>alert("복사 완료!")).catch(()=>prompt("복사하세요:", text));} }
+        function executeNuke() { const sel = document.getElementById('nuke-val'); const val = parseInt(sel.value); const txt = sel.options[sel.selectedIndex].text; if(val === 0) { if(confirm("💥 이 방의 모든 기록을 즉시 폭파할까요?")) socket.emit('nuke'); } else { if(confirm(`⏱ ${txt} 뒤에 폭파 예약할까요?`)) socket.emit('set_timer', val); } }
+        socket.on('nuke_trigger', () => { alert('💥 대화방이 폭파되었습니다.'); location.reload(); });
+        socket.on('timer_start', (endTime) => { const el = document.getElementById('countdown-bar'); const cdText = document.getElementById('countdown'); el.classList.remove('hidden'); if(timerInterval) clearInterval(timerInterval); timerInterval = setInterval(() => { const now = Date.now(); const d = endTime - now; if(d < 0) { clearInterval(timerInterval); return; } const m = Math.floor((d%(1000*60*60))/(1000*60)); const s = Math.floor((d%(1000*60))/1000); cdText.innerText = `폭파 카운트다운: ${m}분 ${s}초`; }, 1000); });
+        async function refreshStats() { const res = await fetch('/api/admin/stats', { method: 'POST' }).then(r=>r.json()); document.getElementById('stat-users').innerText = res.userCount + ' 명'; document.getElementById('stat-rooms').innerText = res.totalRooms + ' 개'; }
+        async function sendAdminNotice() { const msg = document.getElementById('admin-msg').value; if(!msg) return; await fetch('/api/admin/broadcast', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({message:msg})}); alert('공지 전송 완료'); }
+        async function adminNuke() { if(confirm("☣️ [경고] 정말로 모든 데이터를 초기화하시겠습니까?")) { if(prompt("확인을 위해 'CONFIRM_NUKE' 입력") === 'CONFIRM_NUKE') { await fetch('/api/admin/reset', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({confirm:'CONFIRM_NUKE'})}); } } }
+
+        const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'turn:babo7.top:3478', username: 'babo', credential: '1234' }] };
+        async function startCall() { try { myStream = await navigator.mediaDevices.getUserMedia({video:true, audio:true}); myStream.getVideoTracks()[0].enabled = !isCamOff; myStream.getAudioTracks()[0].enabled = !isMuted; document.getElementById('local-video').srcObject = myStream; document.getElementById('video-grid').classList.remove('hidden'); document.getElementById('video-grid').classList.add('flex'); document.getElementById('call-controls').classList.remove('hidden'); document.getElementById('call-controls').classList.add('flex'); document.getElementById('join-call-btn').classList.add('hidden'); socket.emit('join_call'); } catch(e) { alert("카메라 권한이 필요합니다."); } }
+        function endCall() { if(myStream) { myStream.getTracks().forEach(t=>t.stop()); myStream=null; } Object.keys(peers).forEach(k => { peers[k].close(); delete peers[k]; }); const grid = document.getElementById('video-grid'); while(grid.children.length > 1) { grid.removeChild(grid.lastChild); } document.getElementById('video-grid').classList.add('hidden'); document.getElementById('video-grid').classList.remove('flex'); document.getElementById('call-controls').classList.add('hidden'); document.getElementById('call-controls').classList.remove('flex'); document.getElementById('join-call-btn').classList.remove('hidden'); }
+        function toggleMute() { if(myStream) { isMuted=!isMuted; myStream.getAudioTracks()[0].enabled=!isMuted; document.getElementById('btn-mute').className = isMuted ? "btn-danger-soft rounded-full w-14 h-14 flex items-center justify-center text-2xl shadow-sm" : "btn-soft rounded-full w-14 h-14 flex items-center justify-center text-2xl shadow-sm"; } }
+        function toggleCam() { if(myStream) { isCamOff=!isCamOff; myStream.getVideoTracks()[0].enabled=!isCamOff; document.getElementById('btn-cam').className = isCamOff ? "btn-danger-soft rounded-full w-14 h-14 flex items-center justify-center text-2xl shadow-sm" : "btn-soft rounded-full w-14 h-14 flex items-center justify-center text-2xl shadow-sm"; } }
+        socket.on('new_caller', async (uid) => { if(!myStream) { startRinging(); setTimeout(() => { if(confirm("📞 띠링띠링!\n현재 대화방에서 화상통화가 걸려왔습니다!\n참여하시겠습니까?")) { stopRinging(); startCall(); } else { stopRinging(); } }, 100); return; } const pc = createPC(uid); const offer = await pc.createOffer(); await pc.setLocalDescription(offer); socket.emit('offer', { target: uid, sdp: offer, sender: socket.id }); });
+        socket.on('offer', async (d) => { if(!myStream) return; const pc = createPC(d.sender); await pc.setRemoteDescription(new RTCSessionDescription(d.sdp)); const ans = await pc.createAnswer(); await pc.setLocalDescription(ans); socket.emit('answer', { target: d.sender, sdp: ans, sender: socket.id }); });
+        socket.on('answer', async (d) => { const pc=peers[d.sender]; if(pc) pc.setRemoteDescription(new RTCSessionDescription(d.sdp)); });
+        socket.on('ice-candidate', async (d) => { const pc=peers[d.sender]; if(pc) pc.addIceCandidate(new RTCIceCandidate(d.candidate)); });
+        function createPC(uid) { if(peers[uid]) return peers[uid]; const pc = new RTCPeerConnection(rtcConfig); peers[uid] = pc; myStream.getTracks().forEach(t => pc.addTrack(t, myStream)); pc.ontrack = (e) => { let vid = document.getElementById('v_'+uid); if(!vid) { const wrap = document.createElement('div'); wrap.className = "relative h-full aspect-video bg-black rounded-xl overflow-hidden shrink-0 border border-white/10"; wrap.innerHTML = `<video id="v_${uid}" autoplay playsinline class="h-full w-full object-cover"></video>`; document.getElementById('video-grid').appendChild(wrap); vid = document.getElementById('v_'+uid); } vid.srcObject = e.streams[0]; vid.onloadedmetadata = () => { vid.play().catch(e => console.log("Auto-play blocked:", e)); }; }; pc.onicecandidate = e => { if(e.candidate) socket.emit('ice-candidate', {target:uid, candidate:e.candidate, sender:socket.id}); }; return pc; }
+    </script>
+</body>
+</html>
