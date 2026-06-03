@@ -3,21 +3,26 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { fileURLToPath, URL } from 'node:url';
 
-// 개발 중 백엔드(NestJS, :80)로 프록시. 운영에선 Caddy가 라우팅.
-export default defineConfig({
+// dev에선 서비스워커(PWA)를 켜지 않는다 — SW 캐시가 깨진 모듈을 물고
+// "새로고침 시 빈 화면"을 일으킬 수 있어서. PWA는 운영 빌드에서만 활성화.
+export default defineConfig(({ command }) => ({
   plugins: [
     react(),
-    VitePWA({
-      registerType: 'autoUpdate',
-      manifest: {
-        name: 'BaboTalk',
-        short_name: 'BaboTalk',
-        theme_color: '#17212b',
-        background_color: '#0e1621',
-        display: 'standalone',
-        icons: [{ src: '/icon.svg', sizes: 'any', type: 'image/svg+xml' }],
-      },
-    }),
+    ...(command === 'build'
+      ? [
+          VitePWA({
+            registerType: 'autoUpdate',
+            manifest: {
+              name: 'BaboTalk',
+              short_name: 'BaboTalk',
+              theme_color: '#17212b',
+              background_color: '#0e1621',
+              display: 'standalone',
+              icons: [{ src: '/icon.svg', sizes: 'any', type: 'image/svg+xml' }],
+            },
+          }),
+        ]
+      : []),
   ],
   resolve: {
     alias: {
@@ -35,4 +40,4 @@ export default defineConfig({
       '/socket.io': { target: 'http://localhost:3000', ws: true },
     },
   },
-});
+}));

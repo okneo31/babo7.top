@@ -85,6 +85,17 @@ export function CallView({ socket, onEnd }: { socket: TypedSocket; onEnd: () => 
 
     (async () => {
       try {
+        // 보안 컨텍스트가 아니면 mediaDevices 자체가 없다(권한창도 안 뜸).
+        if (!navigator.mediaDevices?.getUserMedia) {
+          alert(
+            '이 접속 환경에서는 카메라·마이크를 쓸 수 없습니다.\n\n' +
+              'localhost 또는 https 로 접속해야 합니다. ' +
+              '네트워크 IP(예: 121.x.x.x:5173)로 들어오면 브라우저가 차단합니다.\n' +
+              `현재 주소: ${location.origin}`,
+          );
+          onEnd();
+          return;
+        }
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         if (cancelled) {
           stream.getTracks().forEach((t) => t.stop());
@@ -99,8 +110,18 @@ export function CallView({ socket, onEnd }: { socket: TypedSocket; onEnd: () => 
         socket.on('answer', onAnswer);
         socket.on('ice_candidate', onIce);
         socket.emit('join_call');
-      } catch {
-        alert('카메라/마이크 권한이 필요합니다.');
+      } catch (e) {
+        const err = e as DOMException;
+        console.error('[call] getUserMedia 실패:', err.name, err.message);
+        const msg =
+          err.name === 'NotAllowedError'
+            ? '카메라/마이크 권한이 거부된 상태입니다.\n주소창의 🔒(또는 ⓘ) → 카메라·마이크를 "허용"으로 바꾸고 새로고침하세요.'
+            : err.name === 'NotFoundError'
+              ? '카메라 또는 마이크 장치를 찾을 수 없습니다.'
+              : err.name === 'NotReadableError'
+                ? '카메라/마이크를 다른 앱이 사용 중입니다. 해당 앱을 끄고 다시 시도하세요.'
+                : `카메라/마이크를 열 수 없습니다 (${err.name}).`;
+        alert(msg);
         onEnd();
       }
     })();

@@ -56,10 +56,12 @@ export function RoomList({ reloadKey }: { reloadKey: number }) {
     };
     s.on('message', refresh);
     s.on('user_read', refresh);
+    s.on('nuke_trigger', refresh); // 폭파된 방 목록에서 제거
     return () => {
       clearTimeout(t);
       s.off('message', refresh);
       s.off('user_read', refresh);
+      s.off('nuke_trigger', refresh);
     };
   }, [load]);
 

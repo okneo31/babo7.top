@@ -19,6 +19,7 @@ import { SearchModal } from './SearchModal';
 
 export function ChatRoom() {
   const room = useUi((s) => s.currentRoom);
+  const setCurrentRoom = useUi((s) => s.setCurrentRoom);
   const closeMobileChat = useUi((s) => s.closeMobileChat);
   const replyTarget = useUi((s) => s.replyTarget);
   const setReplyTarget = useUi((s) => s.setReplyTarget);
@@ -131,6 +132,9 @@ export function ChatRoom() {
       window.alert('💥 대화방이 폭파되었습니다.');
       setMessages([]);
       setCountdownEnd(null);
+      // 방이 삭제됐으므로 채팅창을 닫는다(목록은 RoomList가 nuke_trigger로 갱신).
+      closeMobileChat();
+      setCurrentRoom(null);
     };
     const onTimer = (endTimeMs: number) => setCountdownEnd(endTimeMs);
 
