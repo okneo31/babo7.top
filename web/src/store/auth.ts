@@ -115,8 +115,11 @@ export const useAuth = create<AuthState>((set, get) => ({
       api
         .me()
         .then((r) => {
-          persist(get().token, r.user);
-          set({ user: r.user });
+          // 응답 모양이 예상과 다르면(예: {user} 누락) 기존 user를 지우지 않는다.
+          if (r && r.user && typeof r.user.username === 'string') {
+            persist(get().token, r.user);
+            set({ user: r.user });
+          }
         })
         .catch(() => {
           /* 토큰 만료 시 그대로 둠 — 401 응답이 오면 화면에서 재로그인 유도 */
