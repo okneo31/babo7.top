@@ -38,7 +38,9 @@ export default defineConfig(({ command }) => ({
   plugins: [
     react(),
     ...(command === 'serve' ? [selfDestroyingSw()] : []),
-    ...(command === 'build'
+    // PWA(서비스워커)는 캐시 staleness 문제로 당분간 끔. ENABLE_PWA=1 일 때만 빌드에 포함.
+    // (푸시#1 재활성화 시 registerType:'prompt' 등 업데이트 UX와 함께 켤 것)
+    ...(command === 'build' && process.env.ENABLE_PWA === '1'
       ? [
           VitePWA({
             registerType: 'autoUpdate',

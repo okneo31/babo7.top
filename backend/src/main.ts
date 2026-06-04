@@ -23,6 +23,25 @@ async function bootstrap() {
   app.enableCors({ origin: cfg.get<string[]>('corsOrigins'), credentials: true });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
+  // 과거 PWA 빌드로 사용자 브라우저에 박힌 서비스워커를 제거하기 위한 '자폭 SW'.
+  // 브라우저는 새로고침 때 /sw.js 업데이트를 네트워크로 확인 → 이걸 받아 캐시삭제+unregister+리로드.
+  const SELF_DESTROY_SW =
+    "self.addEventListener('install',()=>self.skipWaiting());" +
+    "self.addEventListener('activate',async()=>{try{" +
+    'const ks=await caches.keys();await Promise.all(ks.map(k=>caches.delete(k)));' +
+    'await self.registration.unregister();' +
+    'const cs=await self.clients.matchAll({type:"window"});cs.forEach(c=>c.navigate(c.url));' +
+    '}catch(e){}});';
+  app.use((req: { path: string }, res: any, next: () => void) => {
+    if (req.path === '/sw.js' || req.path === '/registerSW.js') {
+      res.setHeader('Content-Type', 'application/javascript');
+      res.setHeader('Cache-Control', 'no-store');
+      res.end(req.path === '/registerSW.js' ? '' : SELF_DESTROY_SW);
+      return;
+    }
+    next();
+  });
+
   // Socket.IO를 Redis 어댑터로(수평확장)
   const ioAdapter = new RedisIoAdapter(app, cfg.get<string>('redisUrl')!);
   await ioAdapter.connect();
