@@ -120,10 +120,11 @@ export function RoomList({ reloadKey }: { reloadKey: number }) {
           const name = display(room);
           const isDm = room.type === 'dm' || room.roomId.startsWith('DM_');
           const active = currentRoom?.roomId === room.roomId;
+          // 지금 열어 보고 있는 방은 '읽는 중'이므로 안읽음 배지를 띄우지 않는다(레이스 방지).
           const icon =
             room.type === 'secret' ? '🔒' : room.type === 'channel' ? '📢' : getInitial(name);
           const colorKey = isDm ? name : room.roomId;
-          const unread = room.unread || 0;
+          const unread = active ? 0 : room.unread || 0;
           const fav = favs.includes(room.roomId);
           return (
             <div
