@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, UseGuards } from '@nestjs/common';
 import type {
   AdminStatsResult,
   AdminUserRow,
@@ -44,7 +44,7 @@ export class AdminController {
     return { success: true };
   }
 
-  @Get('users')
+  @Post('users')
   users(): Promise<AdminUserRow[]> {
     return this.admin.listUsers();
   }
