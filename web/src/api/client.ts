@@ -17,6 +17,7 @@ import type {
   JoinRoomResult,
   MessagesResult,
   SearchMessagesDto,
+  IceConfigResult,
   VapidKeyResult,
   SubscribeDto,
   AdminStatsResult,
@@ -105,6 +106,9 @@ export const api = {
   // ---- messages ----
   messages: (roomId: string) => get<MessagesResult>(`/api/messages/${encodeURIComponent(roomId)}`),
   searchMessages: (dto: SearchMessagesDto) => post<MessagesResult>('/api/messages/search', dto),
+
+  // ---- webrtc ICE ----
+  ice: () => get<IceConfigResult>('/api/webrtc/ice'),
 
   // ---- push #1 ----
   vapidKey: () => get<VapidKeyResult>('/api/push/vapid-key'),

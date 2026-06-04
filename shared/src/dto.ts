@@ -36,6 +36,10 @@ export type MessagesResult = Message[];
 // ---- files #6 #8 ----
 export interface UploadResult { success: boolean; file?: FileMeta; message?: string; }
 
+// ---- webrtc ICE ----
+export interface IceServer { urls: string; username?: string; credential?: string; }
+export interface IceConfigResult { iceServers: IceServer[]; }
+
 // ---- push #1 ----
 export interface VapidKeyResult { publicKey: string; }
 export interface SubscribeDto { subscription: PushSubscription; }

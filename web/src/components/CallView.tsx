@@ -1,21 +1,21 @@
 // WebRTC 다자 통화 (mesh). getUserMedia + RTCPeerConnection.
 // 시그널링: socket join_call / new_caller / offer / answer / ice_candidate.
-// TURN: turn:babo7.top:3478 babo/1234.
+// ICE(STUN/TURN) 설정은 하드코딩하지 않고 백엔드 GET /api/webrtc/ice 에서 받는다.
 
 import { useEffect, useRef, useState } from 'react';
 import type { TypedSocket } from '@/socket/socket';
+import { api } from '@/api/client';
 
-const RTC_CONFIG: RTCConfiguration = {
-  iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'turn:babo7.top:3478', username: 'babo', credential: '1234' },
-  ],
+// TURN 못 받았을 때의 최소 폴백(공개 STUN만 — 자격 없음).
+const FALLBACK_RTC: RTCConfiguration = {
+  iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
 };
 
 export function CallView({ socket, onEnd }: { socket: TypedSocket; onEnd: () => void }) {
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const peersRef = useRef<Record<string, RTCPeerConnection>>({});
+  const rtcConfigRef = useRef<RTCConfiguration>(FALLBACK_RTC);
   const [remotes, setRemotes] = useState<{ uid: string; stream: MediaStream }[]>([]);
   const [muted, setMuted] = useState(false);
   const [camOff, setCamOff] = useState(false);
@@ -35,7 +35,7 @@ export function CallView({ socket, onEnd }: { socket: TypedSocket; onEnd: () => 
     function createPC(uid: string): RTCPeerConnection {
       const existing = peersRef.current[uid];
       if (existing) return existing;
-      const pc = new RTCPeerConnection(RTC_CONFIG);
+      const pc = new RTCPeerConnection(rtcConfigRef.current);
       peersRef.current[uid] = pc;
       localStreamRef.current?.getTracks().forEach((t) => pc.addTrack(t, localStreamRef.current!));
       pc.ontrack = (e) => {
@@ -104,6 +104,16 @@ export function CallView({ socket, onEnd }: { socket: TypedSocket; onEnd: () => 
         localStreamRef.current = stream;
         if (localVideoRef.current) localVideoRef.current.srcObject = stream;
         setReady(true);
+
+        // ICE(STUN/TURN) 설정을 백엔드에서 받아 적용(실패 시 STUN 폴백)
+        try {
+          const cfg = await api.ice();
+          if (!cancelled && cfg?.iceServers?.length) {
+            rtcConfigRef.current = { iceServers: cfg.iceServers as RTCIceServer[] };
+          }
+        } catch {
+          /* STUN 폴백 사용 */
+        }
 
         socket.on('new_caller', onNewCaller);
         socket.on('offer', onOffer);

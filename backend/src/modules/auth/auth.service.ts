@@ -11,13 +11,7 @@ import { Model } from 'mongoose';
 import type { RedisClientType } from 'redis';
 import * as bcrypt from 'bcrypt';
 import { nfc } from '@babotalk/shared';
-import type {
-  AuthResult,
-  ApiResult,
-  LoginDto,
-  PublicUser,
-  RegisterDto,
-} from '@babotalk/shared';
+import type { AuthResult, ApiResult, LoginDto, RegisterDto } from '@babotalk/shared';
 import type { JwtPayload } from '@babotalk/shared';
 import { User, UserDocument } from '../../database/schemas/user.schema';
 import { REDIS } from '../../common/redis.module';
@@ -35,20 +29,28 @@ export class AuthService implements OnModuleInit {
     private readonly users: UsersService,
   ) {}
 
-  // 부팅 시 admin 유저가 없으면 생성(legacy 호환).
+  // 부팅 시 관리자 계정을 env(ADMIN_PW) 기준으로 동기화한다.
+  // - 비밀번호는 bcrypt 해시로만 저장(평문 저장 금지).
+  // - env의 비번이 바뀌면 해시를 갱신 → 비번 변경이 재기동으로 반영됨.
   async onModuleInit(): Promise<void> {
-    const adminId = this.config.get<string>('admin.id') ?? 'admin';
-    const adminPw = this.config.get<string>('admin.pw') ?? 'babo1234';
-    const exists = await this.userModel.findOne({ username: adminId }).exec();
-    if (!exists) {
-      const hashed = await bcrypt.hash(adminPw, BCRYPT_ROUNDS);
+    const adminId = this.config.get<string>('adminId')!;
+    const adminPw = this.config.get<string>('adminPassword')!;
+    const existing = await this.userModel.findOne({ username: adminId }).exec();
+    if (!existing) {
       await this.userModel.create({
         username: adminId,
-        password: hashed,
+        password: await bcrypt.hash(adminPw, BCRYPT_ROUNDS),
         nickname: '관리자',
         isAdmin: true,
         friends: [],
       });
+      return;
+    }
+    const samePw = await bcrypt.compare(adminPw, existing.password);
+    if (!samePw || !existing.isAdmin) {
+      existing.password = await bcrypt.hash(adminPw, BCRYPT_ROUNDS);
+      existing.isAdmin = true;
+      await existing.save();
     }
   }
 
@@ -67,8 +69,9 @@ export class AuthService implements OnModuleInit {
       return { success: false, message: '관리자 ID 불가' };
     }
 
-    const masterInvite = this.config.get<string>('masterInvite') ?? 'MASTER_KEY';
-    const isMaster = inviteCode === masterInvite;
+    // 마스터 초대코드는 env에 설정됐을 때만 유효(비어 있으면 백도어 없음).
+    const masterInvite = this.config.get<string>('masterInvite') ?? '';
+    const isMaster = masterInvite !== '' && inviteCode === masterInvite;
     const inviteValid = isMaster || (await this.redis.get(`invite:${inviteCode}`)) !== null;
     if (!inviteValid) {
       return { success: false, message: '초대코드 오류' };
@@ -95,29 +98,10 @@ export class AuthService implements OnModuleInit {
     return { success: true };
   }
 
-  // POST /api/auth/login
+  // POST /api/auth/login — 관리자 포함 모든 계정이 DB의 bcrypt 해시로 검증된다(평문 비교 없음).
   async login(dto: LoginDto): Promise<AuthResult> {
     const username = nfc(dto.username);
     const password = dto.password;
-
-    const adminId = this.config.get<string>('admin.id') ?? 'admin';
-    const adminPw = this.config.get<string>('admin.pw') ?? 'babo1234';
-
-    // config 관리자 계정 일치 시 관리자 JWT 발급.
-    if (username === adminId && password === adminPw) {
-      const payload: JwtPayload = {
-        sub: 'admin',
-        username: 'admin',
-        nickname: '관리자',
-        isAdmin: true,
-      };
-      const adminUser: PublicUser = {
-        username: 'admin',
-        nickname: '관리자',
-        isAdmin: true,
-      };
-      return { token: this.sign(payload), user: adminUser };
-    }
 
     const user = await this.userModel.findOne({ username }).exec();
     if (!user) throw new UnauthorizedException('아이디 없음');

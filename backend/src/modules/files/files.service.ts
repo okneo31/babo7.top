@@ -38,8 +38,8 @@ export class FilesService {
   constructor(private readonly config: ConfigService) {
     const dir = this.config.get<string>('upload.dir') ?? './uploads';
     this.uploadDir = isAbsolute(dir) ? dir : resolve(process.cwd(), dir);
-    this.tokenSecret =
-      this.config.get<string>('upload.tokenSecret') ?? 'change_me_file_secret';
+    // config가 FILE_TOKEN_SECRET을 필수로 검증하므로 하드코딩 기본값 없음.
+    this.tokenSecret = this.config.get<string>('upload.tokenSecret')!;
     const maxMb = this.config.get<number>('upload.maxMb') ?? 200;
     this.maxBytes = maxMb * 1024 * 1024;
   }
