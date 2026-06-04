@@ -15,11 +15,23 @@ function loadInitial(): { token: string | null; user: PublicUser | null } {
     const token = localStorage.getItem(LS_TOKEN);
     const rawUser = localStorage.getItem(LS_USER);
     const user = rawUser ? (JSON.parse(rawUser) as PublicUser) : null;
-    if (token) setToken(token);
-    return { token, user };
+    // 토큰과 '유효한' user가 둘 다 있어야 로그인 상태로 본다.
+    // (token만 있고 user가 손상/누락이면 authed=true로 렌더하다 user.* 접근에서 크래시 → 빈화면)
+    if (token && user && typeof user.username === 'string' && typeof user.nickname === 'string') {
+      setToken(token);
+      return { token, user };
+    }
   } catch {
-    return { token: null, user: null };
+    /* 손상된 저장값 → 아래에서 초기화 */
   }
+  try {
+    localStorage.removeItem(LS_TOKEN);
+    localStorage.removeItem(LS_USER);
+  } catch {
+    /* noop */
+  }
+  setToken(null);
+  return { token: null, user: null };
 }
 
 interface AuthState {

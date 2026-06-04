@@ -3,6 +3,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from '@/App';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import '@/styles.css';
 
 // dev에선 서비스워커를 쓰지 않는다. 과거 등록된 SW가 남아 옛 캐시를 물면
@@ -14,6 +15,8 @@ if (import.meta.env.DEV && 'serviceWorker' in navigator) {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </React.StrictMode>,
 );
