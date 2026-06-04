@@ -2,7 +2,9 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ServeStaticModule } from '@nestjs/serve-static';
 import { APP_GUARD } from '@nestjs/core';
+import { join } from 'path';
 import configuration from './config/configuration';
 import { DatabaseModule } from './database/database.module';
 import { SecurityModule } from './common/security.module';
@@ -26,6 +28,11 @@ import { WebrtcModule } from './modules/webrtc/webrtc.module';
       useFactory: () => ({ uri: configuration().mongoUri }),
     }),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]), // #10 레이트리밋
+    // 빌드된 프런트(web/dist)를 백엔드가 직접 서빙(SPA). API/파일/소켓 경로는 제외.
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', '..', 'web', 'dist'),
+      exclude: ['/api/(.*)', '/files/(.*)', '/socket.io/(.*)'],
+    }),
     DatabaseModule,
     SecurityModule,
     RedisModule,
