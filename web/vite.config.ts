@@ -62,6 +62,8 @@ export default defineConfig(({ command }) => ({
   },
   server: {
     port: 5173,
+    // dev 캐시 지옥 방지: 브라우저가 모듈/HTML을 캐시하지 않게 강제(일반 창에서도 항상 최신)
+    headers: { 'Cache-Control': 'no-store' },
     // 모노레포: web 루트 밖의 ../shared 소스를 dev 서버가 서빙하도록 허용
     fs: { allow: [fileURLToPath(new URL('..', import.meta.url))] },
     proxy: {
