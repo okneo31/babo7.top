@@ -10,7 +10,16 @@ async function bootstrap() {
   const cfg = app.get(ConfigService);
 
   app.setGlobalPrefix('api', { exclude: ['files/(.*)'] });
-  app.use(helmet({ crossOriginResourcePolicy: false }));
+  // CSP/COEP 비활성: 기본 CSP의 upgrade-insecure-requests가 HTTP 스테이징에서 에셋을
+  // HTTPS로 강제 업그레이드해 깨지고, script-src 'self'가 Tailwind CDN을 막는다.
+  // TODO(운영 하드닝): Tailwind를 PostCSS로 빌드 후 엄격한 CSP 재적용.
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      crossOriginEmbedderPolicy: false,
+      crossOriginResourcePolicy: false,
+    }),
+  );
   app.enableCors({ origin: cfg.get<string[]>('corsOrigins'), credentials: true });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
