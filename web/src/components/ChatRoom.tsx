@@ -137,7 +137,14 @@ export function ChatRoom() {
       setCurrentRoom(null);
     };
     const onTimer = (endTimeMs: number) => setCountdownEnd(endTimeMs);
+    // 소켓 재연결(서버 재시작·네트워크 끊김·절전 등) 시 방을 다시 join해 서버와 재동기화.
+    // 안 하면 재연결 후 user_read/message/typing 브로드캐스트를 못 받아 읽음표시가 멈춘다.
+    const onReconnect = () => {
+      socket.emit('join_room', { roomId });
+      socket.emit('read_room', { roomId });
+    };
 
+    socket.on('connect', onReconnect);
     socket.on('room_history', onHistory);
     socket.on('message', onMessage);
     socket.on('message_updated', onUpdated);
@@ -152,6 +159,7 @@ export function ChatRoom() {
 
     return () => {
       socket.emit('leave_room');
+      socket.off('connect', onReconnect);
       socket.off('room_history', onHistory);
       socket.off('message', onMessage);
       socket.off('message_updated', onUpdated);
