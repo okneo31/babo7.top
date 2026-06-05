@@ -42,6 +42,13 @@ async function bootstrap() {
     next();
   });
 
+  // index.html(및 API)은 항상 최신으로 — HTTP 캐시 staleness 방지.
+  // 해시 붙은 불변 에셋(/assets/*)만 캐시 허용.
+  app.use((req: { path: string }, res: { setHeader: (k: string, v: string) => void }, next: () => void) => {
+    if (!req.path.startsWith('/assets/')) res.setHeader('Cache-Control', 'no-store');
+    next();
+  });
+
   // Socket.IO를 Redis 어댑터로(수평확장)
   const ioAdapter = new RedisIoAdapter(app, cfg.get<string>('redisUrl')!);
   await ioAdapter.connect();
