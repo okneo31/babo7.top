@@ -57,11 +57,29 @@ export function RoomList({ reloadKey }: { reloadKey: number }) {
     s.on('message', refresh);
     s.on('user_read', refresh);
     s.on('nuke_trigger', refresh); // 폭파된 방 목록에서 제거
+    s.on('connect', refresh); // 재연결 시 놓친 변경 따라잡기
     return () => {
       clearTimeout(t);
       s.off('message', refresh);
       s.off('user_read', refresh);
       s.off('nuke_trigger', refresh);
+      s.off('connect', refresh);
+    };
+  }, [load]);
+
+  // 자동 자가복구: 실시간 이벤트를 놓쳐도 목록이 스스로 최신화(새로고침 불필요).
+  // 주기적(12초) + 창에 다시 포커스/가시화될 때 재조회.
+  useEffect(() => {
+    const tick = window.setInterval(() => void load(), 12000);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void load();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      window.clearInterval(tick);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
     };
   }, [load]);
 
