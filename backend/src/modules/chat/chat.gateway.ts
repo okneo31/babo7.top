@@ -60,6 +60,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
     socket.data.user = payload;
+    // 개인 채널 join — 현재 보고 있는 방과 무관하게 본인에게 직접 전달(새 DM/메시지 알림)용.
+    socket.join('u:' + nfc(payload.nickname));
   }
 
   async handleDisconnect(socket: AppSocket): Promise<void> {
@@ -185,6 +187,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     });
 
     this.server.to(roomId).emit('message', dto);
+
+    // 방에 들어와 있지 않은 멤버(상대)에게도 개인 채널로 전달 → 새 DM/안읽음이 목록에
+    // 실시간으로 뜨고, 그 방을 열면 바로 보인다. (ChatRoom은 _id로 중복 제거)
+    for (const m of room?.members ?? []) {
+      const mn = nfc(m);
+      if (mn !== nick) this.server.to('u:' + mn).emit('message', dto);
+    }
 
     // #1 오프라인 멤버 + #3 멘션 대상 푸시
     await this.notifyPush(roomId, room?.members ?? [], nick, dto, mentions);
